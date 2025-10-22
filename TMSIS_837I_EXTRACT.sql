@@ -1,0 +1,697 @@
+-- TMSIS 837I EXTRACT SCRIPT
+
+-- DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I;
+
+-- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I AS
+
+-- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I;
+
+INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I
+SELECT DISTINCT
+    RUN_DATE,
+    NUM_ICN,
+    NUM_DTL,
+    CDE_ENTITY_MODEL,
+    CDE_ENC_MCO,
+    CDE_ENC_ACO,
+    ID_SUBMITTER,
+    DOS_FROM_DT,
+    CDE_CLM_TYPE AS CLAIM_TYPE,
+    CDE_CLM_STATUS,
+    CDE_CLM_DISPOSITION,
+    IND_OFFSET,
+    WH_FROM_DT,
+    MD_BATCH_SEQ,
+
+
+/*
+2.001.31	Measure	Critical	 % of claims for which Patient Status is NOT 'still a patient' but are missing Discharge Date	5%	
+IP	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims- claims missing Discharge Date and Patient Status is NOT 'still a patient' 	IN SENDPRO TARGET DASHBOARD
+
+from SCO
+case when CLAIM_TYPE IN('I','O') AND cde_patient_status not in ('+', '-', ' ') then 1 else 0 end as CDE_PATIENT_STATUS1,
+case when (CLAIM_TYPE='I' AND substr(cde_type_of_bill_enc,1,2) <> '21' and SUBSTR(DSC_PATIENT_STATUS,1,2) NOT BETWEEN '30' AND '39')
+AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end DISCHARGE_DT1,
+
+?? showuld we be using just 1 or 0 for valid/invalid or should we do VALID/INVALID/NOT APP/NULL ?
+
+*/
+
+-- DI
+    CASE WHEN Claim_Type IN ('I')
+    AND CDE_CLM_DISPOSITION IN ('O','R')
+    AND IND_CROSSOVER = 'N'
+    AND CDE_CLM_STATUS = 'P'
+	AND PatientStatusCode IS NOT NULL
+    AND PatientStatusCode IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
+    AND PatientStatusCode <> '30' -- STILL PATIENT
+    AND (DISCHARGE_DT_TM IS NOT NULL and DISCHARGE_DT_TM >= ADMIT_DT_TM)
+        THEN 1 ELSE 0 END PatientStatusCode1,
+
+--  Ex
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN CDE_PATIENT_STATUS IS NULL THEN 'NULL'
+        WHEN CDE_PATIENT_STATUS NOT IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' 
+            AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
+        THEN 'NULL'
+        WHEN (CDE_PATIENT_STATUS <> '30') AND (DISCHARGE_DT_TM IS NULL OR DISCHARGE_DT_TM < ADMIT_DT_TM) THEN 'INVALID'
+        ELSE 'VALID'
+    END AS PatientStatusCode1X,
+
+/*
+
+2.001.32	Measure	Critical	 % missing: MSIS-IDENTIFICATION-NUM	2%	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims - claims missing: MSIS-IDENTIFICATION-NUM	SIMILAR IN SENDPRO TARGET DASHBOARD
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L','P') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN FACT_MEM_SEQ IS NULL AND DTL_FACT_MEM_SEQ IS NULL THEN 'NULL'
+        WHEN FACT_MEM_SEQ <= 0 AND DTL_FACT_MEM_SEQ <= 0 THEN 'INVALID'
+		WHEN  (
+              ( NOT EXISTS (SELECT ID_MEDICAID from MHDWQA.NW.NW_MEMBER mem WHERE FACT_MEM_SEQ = mem.MEM_SEQ AND ID_MEDICAID NOT IN ('#','+','-',' ')) )
+          AND ( NOT EXISTS (SELECT ID_MEDICAID from MHDWQA.NW.NW_MEMBER mem WHERE DTL_FACT_MEM_SEQ = mem.MEM_SEQ AND ID_MEDICAID NOT IN ('#','+','-',' '))) 
+             )
+        THEN 'INVALID'
+        ELSE 'VALID'
+    END AS MemberID1X,
+
+/*
+2.001.33	Measure	Critical	% of claim lines with no corresponding claim header	0%	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounters, Original and Replacement, Non-Crossover, Paid Claims - claim lines with no corresponding claim header	Rima to check but this might be fixed with SendPro structure
+
+?? this is not at the claim line level... we are at the claim level with line details joined in... so we can just see if there are any lines without a header... 
+if there is no header there will be no rows returned
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L','P') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+    THEN 'NOT APP'
+
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+RIGHT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    ON inst.NUM_ICN = dtl.NUM_ICN
+WHERE inst.NUM_ICN IS NULL;
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+WHERE NOT EXISTS (
+    SELECT inst.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+);
+
+*/
+
+
+/*
+2.001.36	Measure	Critical	 % of claim header record segments missing ADJUDICATION-DATE	0%	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claim, 
+claim header record segments missing ADJUDICATION-DATE	
+Record segment just references the line, header or other segment table used. So this just means claim headers.
+
+?? WH_FROM_DT 
+
+from Final
+54	MPT_SENDPRO_Validate_Adjudication_Date	NCPDP:
+    Step 1: Lookup SENDPRO.RAW_SPRO_NCPDP_CLAIM OrigClm based on SENDPRO.RAW_SPRO_NCPDP_CLAIM newClaim. TransIDCrossRef = OrigClm. TransID and Obtain AdjudicationDate
+    Step 2: If newClaim.AdjudicationDate > OrigClm. AdjudicationDate Then 1 else 0 end
+
+from RAW
+left join MHDWQA.SENDPRO.RAW_SPRO_837I_CLAIM_SVCLN_ADJUDICATION_DTL as a
+on  h."FileName" = a."FileName"
+-- and h."SubmitterID"        = a."SubmitterID"
+and h."PatientControlNum"  = a."PatientControlNum"
+and d."NumDtl"             = a."NumDtl"
+
+*/
+
+
+
+
+/*
+2.001.37	Measure	Critical	% of claim line record segments missing ADJUDICATION-DATE	0%	"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claim line record segments missing ADJUDICATION-DATE	"JPR - We should dicuss.  I was thinking keep at month level. Also, there are too many metrics so we need a rollup dashboard that can be drill in to the measure by priority.  See Moch Up Sheet.
+Record segment just references the line, header or other segment table used. So this just means claim headers."
+
+?? WH_FROM_DT 
+
+*/
+
+
+/*
+2.001.38	Measure	Critical	 % of claim headers that have no corresponding claim lines	0%	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claim headers that have no corresponding claim lines	Define this in regards to SendPro and exceptions
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    ON inst.NUM_ICN = dtl.NUM_ICN
+WHERE dtl.NUM_ICN IS NULL;
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE NOT EXISTS (
+    SELECT dtl.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+);
+
+*/
+
+
+/*
+2.001.39	Measure	Critical	 % of denied claim headers that have no corresponding claim lines	0%	
+"IP LT OT RX"	
+This measure should show % of denied claim headers that have no corresponding claim lines	Define this in regards to SendPro and exceptions
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE CDE_CLM_STATUS = 'D';
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    ON inst.NUM_ICN = dtl.NUM_ICN
+WHERE dtl.NUM_ICN IS NULL
+AND inst.CDE_CLM_STATUS = 'D';
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE NOT EXISTS (
+    SELECT dtl.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+)
+AND inst.CDE_CLM_STATUS = 'D';
+
+*/
+
+
+/*
+2.001.40	Measure	Critical	 % of denied claim lines that have no corresponding claim header	0%	
+"IP LT OT RX"	
+This measure should show % of denied claim lines that have no corresponding claim header	Define this in regards to SendPro and exceptions
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+WHERE CDE_CLM_STATUS = 'D';
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+RIGHT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    ON inst.NUM_ICN = dtl.NUM_ICN
+WHERE inst.NUM_ICN IS NULL
+AND dtl.CDE_CLM_STATUS = 'D';
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+WHERE NOT EXISTS (
+    SELECT inst.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+)
+AND dtl.CDE_CLM_STATUS = 'D';
+
+*/
+
+
+/*
+2.001.41	Measure	Critical	 % of claim headers that have no corresponding non-denied claim lines	0%	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claim headers that have no corresponding non-denied claim lines	Define this in regards to SendPro and exceptions
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE CDE_CLM_STATUS != 'D';
+
+select count(1)
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE NOT EXISTS (
+    SELECT dtl.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+    AND dtl.CDE_CLM_STATUS != 'D'
+);
+
+-- validation
+
+select *
+from MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+where dtl.NUM_ICN in (
+
+select inst.NUM_ICN
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+WHERE NOT EXISTS (
+    SELECT dtl.NUM_ICN 
+    FROM MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    WHERE inst.NUM_ICN = dtl.NUM_ICN
+    AND dtl.CDE_CLM_STATUS != 'D'
+)
+
+and dtl.CDE_CLM_STATUS != 'D'
+);
+
+*/
+
+
+/*
+2.001.42	Measure	Critical	 % of claims missing BEGINNING-DATE-OF-SERVICE	2%	
+"LT IP OT"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claims missing BEGINNING-DATE-OF-SERVICE	
+
+-- this is taken from Final
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN DOS_FROM_DT IS NULL AND DTL_DOS_FROM_DT IS NULL THEN 'NULL'
+        WHEN DOS_FROM_DT = '1900-01-01' AND DTL_DOS_FROM_DT = '1900-01-01' THEN 'INVALID'
+        ELSE 'VALID'
+    END AS FromServiceDate1X,
+
+/*
+2.001.43	Measure	Critical	 % of claims missing: ENDING-DATE-OF-SERVICE	2%	
+"LT IP OT"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claims missing: ENDING-DATE-OF-SERVICE	
+
+-- this is taken from Final
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN DOS_TO_DT IS NULL AND DTL_DOS_TO_DT IS NULL THEN 'NULL'
+        WHEN DOS_TO_DT = '1900-01-01' AND DTL_DOS_TO_DT = '1900-01-01' THEN 'INVALID'
+        ELSE 'VALID'
+    END AS ToServiceDate1X,
+
+
+/*
+2.001.44	Measure	Critical	 % of claims missing: PRESCRIPTION-FILL-DATE	2%	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claims missing: PRESCRIPTION-FILL-DATE	
+
+?? DTE_DISPENSE not in SPRO_B_ENC_CLAIM_PHRM_LEG_HIST
+Either use ADJUDICATION_DT or DOS_FROM_DT?
+
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN DOS_FROM_DT IS NULL THEN 'NULL'
+        WHEN DOS_FROM_DT = '1900-01-01' THEN 'INVALID'
+        ELSE 'VALID'
+    END AS PrescriptionFillDate1X,
+
+
+/*
+2.001.01	Measure	High	 % of claim headers with Billing Provider NPI Number in an invalid format	<= 1%	
+RX	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Adjustment, Paid Claims, claim headers with invalid formatting of Billing Provider NPI within.	
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- from Target
+         WHEN 
+         (
+               ((billing_ProviderNPI IS NULL) OR billing_ProviderNPI IN ('0','000000000','0000000000') ) 
+           AND ((dtl_billing_ProviderNPI IS NULL) OR dtl_billing_ProviderNPI IN ('0','000000000','0000000000') )
+         )            
+            THEN 'NULL'
+		 WHEN 
+         (
+              (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = billing_ProviderNPI))
+          AND (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = dtl_billing_ProviderNPI)) 
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+    END AS BillingProviderNPI1X,
+
+
+/*
+2.001.06	Measure	High	% missing: BILLING-PROV-NUM 	<= 2% missing	
+"IP OT RX"	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Billing Provider PID/SL.	
+
+Final - Target
+56	MPT_SENDPRO_ProviderPIDSL_Valid	Validity of  PIDSL is determined by performing a look up to the following tables 
+    1.	SENDPRO.SPRO_B_ENC837_PROVIDER_HIST on the field ID_PROVIDER
+    If valid then 1 else 0
+
+?? Validate how this validates PIDSL
+*/
+
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- from Target
+   CASE  
+         WHEN (billing_ProviderInternalId IS NULL) AND (dtl_billing_ProviderInternalId IS NULL) THEN 'NULL'
+		 WHEN ( 
+               (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = billing_ProviderInternalId) )
+           AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_billing_ProviderInternalId) )
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+    END AS BillingProviderInternalId1X,
+
+
+/*
+2.001.21	Measure	High	% missing: TOT-BILLED-AMT	<= 2% missing	
+"IP LT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Total Billed Amount	
+
+from Dashboard Data Needed
+The total amount should be the sum of each of the billed amounts submitted at the claim detail level.
+
+If TYPE-OF-CLAIM = "4"(Medicaid or Medicaid-expansion Service Tracking Claim), then TOT-BILLED-AMT must = "00000000".
+If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-filled or contain the amount paid by the plan to the provider. 
+
+?? validating header AMT_BILLED = SUM of detail AMT_BILLED will require procesing at higher level of detail
+
+?? TYPE-OF-CLAIM
+?? If we assume that this is encounter record then the Target logic should be ok - except for header to detail check
+
+*/
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- from Target
+    WHEN AMT_BILLED IS NULL AND DTL_AMT_BILLED IS NULL THEN 'NULL'
+    WHEN AMT_BILLED < 0 OR DTL_AMT_BILLED < 0 THEN 'INVALID'
+    ELSE 'VALID'
+END AS ClaimBilledAmount1X,
+
+
+/*
+2.001.22	Measure	High	% of claim headers with any accommodation revenue codes	>= 85% present	
+IP	
+This measure should show % of Medicaid Encounter: Original, Non-Crossover, Paid Claims, claim headers with Accomodation Rev Codes	
+*/
+
+
+/*
+2.001.23	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing	<= 10% missing	
+IP	
+This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing. 	
+*/
+
+
+/*
+2.001.24	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing	<= 10% missing	
+IP	
+This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing. 	
+*/
+
+
+/*
+2.001.25	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing - non-Crossover Paid claims	<= 10% missing	
+LT 	
+This measure should show % of Medicaid Encounter: Original, non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing.	
+*/
+
+
+/*
+2.001.26	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing - Crossover Paid claims	<= 40% missing	
+LT 	
+This measure should show % of Medicaid Encounter: Original, Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing.	
+*/
+
+
+/*
+2.001.29	Measure	High	% of crossover claim headers where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT are 0 or missing	<= 10% missing	
+"IP LT OT"	
+This measure should show % of Medicaid and S-CHIP Encounter: Non-void, Crossover, Paid Claims, claim headers where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT are 0 or missing.	
+*/
+
+
+/*
+2.001.30	Measure	High	% of non-crossover encounter claims where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, or TOT-MEDICARE-DEDUCTIBLE-AMT is non-zero	<= .01% present	
+"IP LT OT RX"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims  where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT is not 0.	
+*/
+
+
+/*
+2.001.00	Measure	Medium	Average # ancillary codes on claims with ancillary codes	5-18 Ancillary codes	
+IP	
+This measure should show the AVE # of ancillary codes on Medicaid and S-CHIP Encounter: Original and Adjustment, Paid Claims with ancillary codes	
+*/
+
+
+/*
+2.001.02	Measure	Medium	 % missing: ADMITTING-PROV-NUM	<= 2% missing	
+IP	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing an Admitting Provider PID/SL.	
+*/
+
+
+/*
+2.001.03	Measure	Medium	% missing: ADMITTING-PROV-NPI-NUM	<= 2% missing	
+IP	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing an Admitting Provider NPI.	
+*/
+
+
+/*
+2.001.04	Measure	Medium	% missing: ADMISSION-TYPE 	<= 2% missing	
+IP	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing an Admission Type.	
+*/
+
+
+/*
+2.001.05	Measure	Medium	 % missing: BILLED-AMT 	<= 2% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing the BILLED-AMT	
+*/
+
+
+/*
+2.001.07	Measure	Medium	 % missing: BILLING-PROV-TAXONOMY	<= 2% missing	
+"IP LT OT"	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Billing Provider Taxonomy.	
+*/
+
+
+/*
+2.001.08	Measure	Medium	 % missing: BILLING-PROV-TYPE 	<= 10% missing	
+OT	
+This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Billing Provider Type.	
+*/
+
+
+/*
+2.001.09	Measure	Medium	 % missing: BRAND-GENERIC-IND 	<= 10% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing BRAND-GENERIC-IND	
+*/
+
+
+/*
+2.001.10	Measure	Medium	% missing: COMPOUND-DRUG-IND 	1-99% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing COMPOUND-DRUG-IND	
+*/
+
+
+/*
+2.001.11	Measure	Medium	 % missing: DISPENSING-PRESCRIPTION-DRUG-PROV-NUM	<= 2% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Dispensing PID/SL	
+*/
+
+
+/*
+2.001.12	Measure	Medium	% missing: MEDICAID-COV-INPATIENT-	<= 2% missing	
+IP	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing MEDICAID-COV-INPATIENT-DAYS	
+*/
+
+
+/*
+2.001.13	Measure	Medium	 % missing: PRESCRIBING-PROV-NUM 	<= 10% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Prescribing Provider PID/SL	
+*/
+
+
+/*
+2.001.14	Measure	Medium	 % missing: PRESCRIBING-PROV-NPI-NUM 	<= 2% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Prescribing Provider NPI	
+*/
+
+
+/*
+2.001.15	Measure	Medium	% missing: REVENUE-CHARGE 	<= 2% missing	
+"IP LP"	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REVENUE-CHARGE	
+*/
+
+
+/*
+2.001.16	Measure	Medium	% missing: REBATE-ELIGIBLE-INDICATOR 	<= 20% missing	
+RX	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REBATE-ELIGIBLE-INDICATOR	
+*/
+
+
+/*
+2.001.17	Measure	Medium	% missing: REFERRING-PROV-NUM 	<= 98% missing	
+OT	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Referring Provider PID/SL	
+*/
+
+
+/*
+2.001.18	Measure	Medium	% missing: REFERRING-PROV-NPI-NUM	>= 90% present	
+IP	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Referring Provider NPI	
+*/
+
+
+/*
+2.001.19	Measure	Medium	% missing: SERVICING-PROV-NUM	<= 10% missing	
+OT	
+This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Servicing Provider PID/SL	
+*/
+
+
+/*
+2.001.20	Measure	Medium	% missing: TOT-ALLOWED-AMT 	<= 2% missing	
+"IP LT OT RX"	
+This measure should show % of IP, LT, OT, and RX claims missing Total Allowed Amount 	
+*/
+
+CASE WHEN CLAIM_TYPE = 'I' THEN 1 ELSE 0 END INPATS,
+CASE WHEN CLAIM_TYPE = 'P' THEN 1 ELSE 0 END PHARMS,
+CASE WHEN CLAIM_TYPE = 'O' THEN 1 ELSE 0 END OUTPATS,
+CASE WHEN CLAIM_TYPE = 'L' THEN 1 ELSE 0 END LTCS,
+CASE WHEN CLAIM_TYPE IN ('D') THEN 1 ELSE 0 END DENT,
+--CASE WHEN CLAIM_TYPE = 'P' AND CDE_DRUG_CLASS = 'F' THEN 1 ELSE 0 END PHARM_SCRIPT,
+--CASE WHEN IND_ENC_COMPOUND='2' THEN 1 ELSE 0 END AS NOTCOMPOUND,
+--CASE WHEN CLAIM_TYPE = 'P' AND CDE_DRUG_CLASS = 'F' AND IND_ENC_COMPOUND='2'  
+--     THEN 1 ELSE 0 END PHARMSCRIPT_NOTCOMP,
+CASE WHEN CLAIM_TYPE <> 'P' THEN 1 ELSE 0 END AS NON_PHARM,
+
+1 as TOT_REX
+
+FROM (
+select DISTINCT
+    CURRENT_DATE() AS RUN_DATE,
+    inst.NUM_ICN,
+    inst.CDE_ENTITY_MODEL,
+    inst.CDE_ENC_MCO,
+    inst.CDE_ENC_ACO,
+    inst.ID_SUBMITTER,
+    inst.DOS_FROM_DT,
+    inst.CDE_CLM_TYPE AS Claim_Type,
+    inst.CDE_CLM_STATUS,
+    inst.CDE_CLM_DISPOSITION,
+    inst.IND_OFFSET,
+    inst.WH_FROM_DT,
+    inst.MD_BATCH_SEQ,
+
+    inst.CDE_BILL_FREQ,
+    inst.CDE_CONTRACT_TYPE,
+    inst.AMT_ALLOWED,
+    inst.AMT_PAID,
+    inst.AMT_BILLED,
+    inst.DOS_TO_DT,
+    inst.ADMIT_DT_TM,
+    inst.MEM_SEQ AS FACT_MEM_SEQ,
+    inst.QTY_UNITS_BILLED,
+    inst.DISCHARGE_DT_TM,
+    inst.CDE_ADMIT_TYPE,
+    inst.CDE_ADMIT_SOURCE,
+    inst.CDE_PATIENT_STATUS AS PatientStatusCode,
+    inst.CDE_TYPE_OF_BILL,
+    inst.DIAGRP_SEQ,
+
+    inst.BILLING_ENC_PRV_SEQ,
+    inst.SERVICING_ENC_PRV_SEQ,
+    NULL AS CDE_PLACE_OF_SERVICE,
+  
+    --RX
+    NULL AS ADJUDICATION_DT,
+    -- DATE(ADJUDICATION_DT_TM) AS ADJUDICATION_DT,
+
+    prov_billing.ENC_PROV_ID AS billing_ProviderInternalId,
+    prov_billing.ID_NPI AS billing_ProviderNPI,
+
+    prov_servicing.ENC_PROV_ID AS servicing_ProviderInternalId,
+    prov_servicing.ID_NPI AS servicing_ProviderNPI,
+
+    dtl.NUM_DTL,
+    dtl.CDE_CLM_STATUS DTL_CLM_STATUS,
+    inst.IND_OFFSET AS DTL_IND_OFFSET,
+ 
+    dtl.PROC_SEQ,
+    dtl.PROCMFRGRP_SEQ,
+
+    dtl.AMT_ALLOWED             AS DTL_AMT_ALLOWED,
+    dtl.AMT_PAID                AS DTL_AMT_PAID,
+    dtl.AMT_BILLED              AS DTL_AMT_BILLED,
+    dtl.BILLING_ENC_PRV_SEQ AS DTL_BILLING_ENC_PRV_SEQ,
+    dtl.SERVICING_ENC_PRV_SEQ   AS DTL_SERVICING_ENC_PRV_SEQ,
+    dtl.DOS_FROM_DT             AS DTL_DOS_FROM_DT,
+    dtl.DOS_TO_DT               AS DTL_DOS_TO_DT,
+    dtl.MEM_SEQ                 AS DTL_FACT_MEM_SEQ,
+    dtl.QTY_UNITS_BILLED        AS DTL_QTY_UNITS_BILLED,
+    dtl.DISCHARGE_DT            AS DTL_DISCHARGE_DT,
+
+    dtl_prov_billing.ENC_PROV_ID   AS dtl_billing_ProviderInternalId,
+    dtl_prov_billing.ID_NPI        AS dtl_billing_ProviderNPI,
+
+    dtl_prov_servicing.ENC_PROV_ID AS dtl_servicing_ProviderInternalId,
+    dtl_prov_servicing.ID_NPI      AS dtl_servicing_ProviderNPI
+
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
+    ON inst.NUM_ICN = dtl.NUM_ICN
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_billing
+    ON inst.BILLING_ENC_PRV_SEQ = prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_servicing
+    ON inst.SERVICING_ENC_PRV_SEQ = prov_servicing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_billing
+    ON DTL_BILLING_ENC_PRV_SEQ = dtl_prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_servicing
+    ON DTL_SERVICING_ENC_PRV_SEQ = dtl_prov_servicing.ENC_PRV_SEQ
+
+WHERE inst.IND_OFFSET = 'N' AND DTL_IND_OFFSET = 'N'
+ );
