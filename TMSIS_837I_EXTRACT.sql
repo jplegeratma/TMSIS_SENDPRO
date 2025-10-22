@@ -52,7 +52,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
 --  Ex
     CASE WHEN CDE_CLM_TYPE NOT IN ('I') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN CDE_PATIENT_STATUS IS NULL THEN 'NULL'
@@ -72,7 +72,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L','P') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN FACT_MEM_SEQ IS NULL AND DTL_FACT_MEM_SEQ IS NULL THEN 'NULL'
@@ -280,7 +280,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_FROM_DT IS NULL AND DTL_DOS_FROM_DT IS NULL THEN 'NULL'
@@ -298,7 +298,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','L') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_TO_DT IS NULL AND DTL_DOS_TO_DT IS NULL THEN 'NULL'
@@ -319,7 +319,7 @@ Either use ADJUDICATION_DT or DOS_FROM_DT?
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('P')
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_FROM_DT IS NULL THEN 'NULL'
@@ -336,7 +336,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('P')
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        --OR IND_CROSSOVER = 'Y'
+        --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -372,7 +372,7 @@ Final - Target
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('I','O','P')
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        --OR IND_CROSSOVER = 'Y'
+        --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -407,7 +407,7 @@ If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-f
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','P')
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
-        --OR IND_CROSSOVER = 'Y'
+        --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -421,27 +421,70 @@ END AS ClaimBilledAmount1X,
 2.001.22	Measure	High	% of claim headers with any accommodation revenue codes	>= 85% present	
 IP	
 This measure should show % of Medicaid Encounter: Original, Non-Crossover, Paid Claims, claim headers with Accomodation Rev Codes	
+
+
+from Dashboard Data Needed
+NW_B_REVENUE_CODE.CDE_REVENUE
+Join on REV_SEQ from SPRO_B_ENC_INST_INFO_DTL_HIST
+Accomodation Revenue Code Values = 100-219
+
+from Target
+24	MPT_SENDPRO_ServiceLineRevenueCode_Valid	If valid based on the lookup against the CDE_CHAR from NW_SUP_CODE_REF where CDE_GROUP='CDE_REVENUE'  then 1 else 0
+
+?? This is at the claim header level but uses detail revenue codes... so if any detail line has a valid code then the header is valid? And needs to be aggregated.
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O')
+        OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN DTL_REV_SEQ IS NULL THEN 'NULL'
+    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN ('100' AND '219') ) THEN 'INVALID'
+    ELSE 'VALID'
+    END AS RevenueCode1X,
 
 /*
 2.001.23	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing	<= 10% missing	
 IP	
 This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing. 	
+
 */
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L')
+        OR CDE_CLM_DISPOSITION NOT IN ('O')
+        OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0 THEN 'INVALID' 
+    ELSE 'VALID'
+    END AS AmtPaidMcareHdr1X,
 
 
 /*
 2.001.24	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing	<= 10% missing	
 IP	
 This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing. 	
+
+?? Assuming this is for DTL, otherwise this is the same as 2.001.23
 */
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L')
+        OR CDE_CLM_DISPOSITION NOT IN ('O')
+        OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN DTL_AMT_PAID_MCARE IS NULL OR DTL_AMT_PAID_MCARE <= 0 THEN 'INVALID' 
+    ELSE 'VALID'
+    END AS AmtPaidMcareDtl1X,
 
 
 /*
 2.001.25	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing - non-Crossover Paid claims	<= 10% missing	
 LT 	
 This measure should show % of Medicaid Encounter: Original, non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing.	
+
+?? same as 23 but for LT - adding LT to 23
 */
 
 
@@ -449,15 +492,37 @@ This measure should show % of Medicaid Encounter: Original, non-Crossover, Paid 
 2.001.26	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing - Crossover Paid claims	<= 40% missing	
 LT 	
 This measure should show % of Medicaid Encounter: Original, Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing.	
+
+LT Crossover
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('L')
+        OR CDE_CLM_DISPOSITION NOT IN ('O')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0 THEN 'INVALID' 
+    ELSE 'VALID'
+    END AS AmtPaidMcareHdrLTXOver1X,
 
 /*
 2.001.29	Measure	High	% of crossover claim headers where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT are 0 or missing	<= 10% missing	
 "IP LT OT"	
 This measure should show % of Medicaid and S-CHIP Encounter: Non-void, Crossover, Paid Claims, claim headers where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT are 0 or missing.	
+
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','O')
+        OR CDE_CLM_DISPOSITION IN ('V')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN (  (AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0) 
+        AND (AMT_COINSURANCE_MCARE IS NULL OR AMT_COINSURANCE_MCARE <= 0)
+        AND (AMT_DEDUCT_MCARE IS NULL OR AMT_DEDUCT_MCARE <= 0)
+        ) THEN 'INVALID' 
+    ELSE 'VALID'
+    END AS AmtPaidCoDedMcareHdrXOver1X,
 
 /*
 2.001.30	Measure	High	% of non-crossover encounter claims where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, or TOT-MEDICARE-DEDUCTIBLE-AMT is non-zero	<= .01% present	
@@ -465,11 +530,24 @@ This measure should show % of Medicaid and S-CHIP Encounter: Non-void, Crossover
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims  where MEDICARE-PAID-AMT, TOT-MEDICARE-COINS-AMT, and TOT-MEDICARE-DEDUCTIBLE-AMT is not 0.	
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','O','P')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN (  (AMT_PAID_MCARE > 0) 
+        OR  (AMT_COINSURANCE_MCARE > 0)
+        OR  (AMT_DEDUCT_MCARE > 0)
+        ) THEN 'INVALID' 
+    ELSE 'VALID'
+    END AS AmtPaidCoDedMcareHdrNonXOver1X,
 
 /*
 2.001.00	Measure	Medium	Average # ancillary codes on claims with ancillary codes	5-18 Ancillary codes	
 IP	
 This measure should show the AVE # of ancillary codes on Medicaid and S-CHIP Encounter: Original and Adjustment, Paid Claims with ancillary codes	
+
+??What are the ancillary codes?
 */
 
 
@@ -477,6 +555,8 @@ This measure should show the AVE # of ancillary codes on Medicaid and S-CHIP Enc
 2.001.02	Measure	Medium	 % missing: ADMITTING-PROV-NUM	<= 2% missing	
 IP	
 This measure should show the % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing an Admitting Provider PID/SL.	
+
+
 */
 
 
@@ -624,6 +704,7 @@ select DISTINCT
     inst.CDE_CLM_STATUS,
     inst.CDE_CLM_DISPOSITION,
     inst.IND_OFFSET,
+    inst.IND_CROSSOVER,
     inst.WH_FROM_DT,
     inst.MD_BATCH_SEQ,
 
@@ -632,6 +713,11 @@ select DISTINCT
     inst.AMT_ALLOWED,
     inst.AMT_PAID,
     inst.AMT_BILLED,
+    inst.AMT_PAID_MCARE,
+    inst.AMT_COINSURANCE_MCARE,
+    inst.AMT_COPAY_MCARE,
+    inst.AMT_DEDUCT_MCARE,
+
     inst.DOS_TO_DT,
     inst.ADMIT_DT_TM,
     inst.MEM_SEQ AS FACT_MEM_SEQ,
@@ -642,7 +728,7 @@ select DISTINCT
     inst.CDE_PATIENT_STATUS AS PatientStatusCode,
     inst.CDE_TYPE_OF_BILL,
     inst.DIAGRP_SEQ,
-
+ 
     inst.BILLING_ENC_PRV_SEQ,
     inst.SERVICING_ENC_PRV_SEQ,
     NULL AS CDE_PLACE_OF_SERVICE,
@@ -667,13 +753,20 @@ select DISTINCT
     dtl.AMT_ALLOWED             AS DTL_AMT_ALLOWED,
     dtl.AMT_PAID                AS DTL_AMT_PAID,
     dtl.AMT_BILLED              AS DTL_AMT_BILLED,
-    dtl.BILLING_ENC_PRV_SEQ AS DTL_BILLING_ENC_PRV_SEQ,
+    dtl.AMT_PAID_MCARE          AS DTL_AMT_PAID_MCARE,
+    dtl.AMT_COINSURANCE_MCARE   AS DTL_AMT_COINSURANCE_MCARE,
+    dtl.AMT_COPAY_MCARE         AS DTL_AMT_COPAY_MCARE,
+    dtl.AMT_DEDUCT_MCARE        AS DTL_AMT_DEDUCT_MCARE,
+
+    dtl.BILLING_ENC_PRV_SEQ     AS DTL_BILLING_ENC_PRV_SEQ,
     dtl.SERVICING_ENC_PRV_SEQ   AS DTL_SERVICING_ENC_PRV_SEQ,
     dtl.DOS_FROM_DT             AS DTL_DOS_FROM_DT,
     dtl.DOS_TO_DT               AS DTL_DOS_TO_DT,
     dtl.MEM_SEQ                 AS DTL_FACT_MEM_SEQ,
     dtl.QTY_UNITS_BILLED        AS DTL_QTY_UNITS_BILLED,
     dtl.DISCHARGE_DT            AS DTL_DISCHARGE_DT,
+
+    dtl.REV_SEQ                 AS DTL_REV_SEQ,
 
     dtl_prov_billing.ENC_PROV_ID   AS dtl_billing_ProviderInternalId,
     dtl_prov_billing.ID_NPI        AS dtl_billing_ProviderNPI,
