@@ -46,7 +46,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
 	AND PatientStatusCode IS NOT NULL
     AND PatientStatusCode IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
     AND PatientStatusCode <> '30' -- STILL PATIENT
-    AND (DISCHARGE_DT_TM IS NOT NULL and DISCHARGE_DT_TM >= ADMIT_DT_TM)
+    AND (DISCHARGE_DT IS NOT NULL and DISCHARGE_DT >= ADMIT_DT)
         THEN 1 ELSE 0 END PatientStatusCode1,
 
 --  Ex
@@ -59,7 +59,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
         WHEN CDE_PATIENT_STATUS NOT IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' 
             AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
         THEN 'NULL'
-        WHEN (CDE_PATIENT_STATUS <> '30') AND (DISCHARGE_DT_TM IS NULL OR DISCHARGE_DT_TM < ADMIT_DT_TM) THEN 'INVALID'
+        WHEN (CDE_PATIENT_STATUS <> '30') AND (DISCHARGE_DT IS NULL OR DISCHARGE_DT < ADMIT_DT) THEN 'INVALID'
         ELSE 'VALID'
     END AS PatientStatusCode1X,
 
@@ -1026,15 +1026,16 @@ CASE WHEN CLAIM_TYPE NOT IN  ('P', 'Q') THEN 1 ELSE 0 END AS NON_PHARM,
 1 as TOT_REX
 
 FROM (
+
 select DISTINCT
-    CURRENT_DATE() AS RUN_DATE,
+    CURRENT_DATE()                 AS RUN_DATE,
     inst.NUM_ICN,
     inst.CDE_ENTITY_MODEL,
     inst.CDE_ENC_MCO,
     inst.CDE_ENC_ACO,
     inst.ID_SUBMITTER,
     inst.DOS_FROM_DT,
-    inst.CDE_CLM_TYPE AS Claim_Type,
+    inst.CDE_CLM_TYPE              AS Claim_Type,
     inst.CDE_CLM_STATUS,
     inst.CDE_CLM_DISPOSITION,
     inst.IND_OFFSET,
@@ -1054,65 +1055,84 @@ select DISTINCT
     inst.NUM_DAYS_COVD,
 
     inst.DOS_TO_DT,
-    inst.ADMIT_DT_TM,
-    inst.MEM_SEQ AS FACT_MEM_SEQ,
+    DATE(inst.ADMIT_DT_TM)         AS ADMIT_DT,
+    inst.MEM_SEQ                   AS FACT_MEM_SEQ,
     inst.QTY_UNITS_BILLED,
-    inst.DISCHARGE_DT_TM,
+    DATE(inst.DISCHARGE_DT_TM)     AS DISCHARGE_DT,
     inst.CDE_ADMIT_TYPE,
     inst.CDE_ADMIT_SOURCE,
-    inst.CDE_PATIENT_STATUS AS PatientStatusCode,
+    inst.CDE_PATIENT_STATUS        AS PatientStatusCode,
     inst.CDE_TYPE_OF_BILL,
     inst.DIAGRP_SEQ,
  
     inst.BILLING_ENC_PRV_SEQ,
     inst.SERVICING_ENC_PRV_SEQ,
-    NULL AS CDE_PLACE_OF_SERVICE,
+    NULL                           AS CDE_PLACE_OF_SERVICE,
   
     --RX
-    NULL AS ADJUDICATION_DT,
-    -- DATE(ADJUDICATION_DT_TM) AS ADJUDICATION_DT,
-    NULL AS IND_GENERIC,
-    -- IND_GENERIC
+    NULL                           AS ADJUDICATION_DT,
+    NULL                           AS IND_GENERIC,
+    NULL                           AS PROC_SEQ,
+    NULL                           AS CDE_REC_STATUS,
+    NULL                           AS PHRM_CDE_NDC,
+    NULL                           AS IND_SCRIPT_OT,
+    NULL                           AS SCRIPT_WRITTEN_DT,
+    NULL                           AS CDE_DAWPROD_SEL,
+    NULL                           AS AMT_DISP_FEE,
+    NULL                           AS NUM_SCRIPT_SERV_REF,
+    NULL                           AS CDE_PRESC_ORIG,
+    NULL                           AS QTY_DISPD,
+    NULL                           AS DTL_CDE_NDC,
 
-    prov_billing.ENC_PROV_ID AS billing_ProviderInternalId,
-    prov_billing.ID_NPI AS billing_ProviderNPI,
+    prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
+    prov_billing.ID_NPI            AS billing_ProviderNPI,
 
-    prov_servicing.ENC_PROV_ID AS servicing_ProviderInternalId,
-    prov_servicing.ID_NPI AS servicing_ProviderNPI,
+    prov_servicing.ENC_PROV_ID     AS servicing_ProviderInternalId,
+    prov_servicing.ID_NPI          AS servicing_ProviderNPI,
 
-    prov_attending.ENC_PROV_ID AS attending_ProviderInternalId,
-    prov_attending.ID_NPI AS attending_ProviderNPI,
+    prov_attending.ENC_PROV_ID     AS attending_ProviderInternalId,
+    prov_attending.ID_NPI          AS attending_ProviderNPI,
+
+    prov_referring.ENC_PROV_ID     AS referring_ProviderInternalId,
+    prov_referring.ID_NPI          AS referring_ProviderNPI,
+    
+    NULL                           AS prescribing_ProviderInternalId,
+    NULL                           AS prescribing_ProviderNPI,
 
     dtl.NUM_DTL,
-    dtl.CDE_CLM_STATUS AS DTL_CLM_STATUS,
-    dtl.IND_OFFSET AS DTL_IND_OFFSET,
+    dtl.CDE_CLM_STATUS DTL_CLM_STATUS,
+    dtl.IND_OFFSET                 AS DTL_IND_OFFSET,
  
     dtl.PROC_SEQ,
     dtl.PROCMFRGRP_SEQ,
 
-    dtl.AMT_ALLOWED             AS DTL_AMT_ALLOWED,
-    dtl.AMT_PAID                AS DTL_AMT_PAID,
-    dtl.AMT_BILLED              AS DTL_AMT_BILLED,
-    dtl.AMT_PAID_MCARE          AS DTL_AMT_PAID_MCARE,
-    dtl.AMT_COINSURANCE_MCARE   AS DTL_AMT_COINSURANCE_MCARE,
-    dtl.AMT_COPAY_MCARE         AS DTL_AMT_COPAY_MCARE,
-    dtl.AMT_DEDUCT_MCARE        AS DTL_AMT_DEDUCT_MCARE,
+    dtl.AMT_ALLOWED                AS DTL_AMT_ALLOWED,
+    dtl.AMT_PAID                   AS DTL_AMT_PAID,
+    dtl.AMT_BILLED                 AS DTL_AMT_BILLED,
+    dtl.AMT_PAID_MCARE             AS DTL_AMT_PAID_MCARE,
+    dtl.AMT_COINSURANCE_MCARE      AS DTL_AMT_COINSURANCE_MCARE,
+    dtl.AMT_COPAY_MCARE            AS DTL_AMT_COPAY_MCARE,
+    dtl.AMT_DEDUCT_MCARE           AS DTL_AMT_DEDUCT_MCARE,
 
-    dtl.BILLING_ENC_PRV_SEQ     AS DTL_BILLING_ENC_PRV_SEQ,
-    dtl.SERVICING_ENC_PRV_SEQ   AS DTL_SERVICING_ENC_PRV_SEQ,
-    dtl.DOS_FROM_DT             AS DTL_DOS_FROM_DT,
-    dtl.DOS_TO_DT               AS DTL_DOS_TO_DT,
-    dtl.MEM_SEQ                 AS DTL_FACT_MEM_SEQ,
-    dtl.QTY_UNITS_BILLED        AS DTL_QTY_UNITS_BILLED,
-    dtl.DISCHARGE_DT            AS DTL_DISCHARGE_DT,
+    dtl.BILLING_ENC_PRV_SEQ        AS DTL_BILLING_ENC_PRV_SEQ,
+    dtl.SERVICING_ENC_PRV_SEQ      AS DTL_SERVICING_ENC_PRV_SEQ,
+    dtl.REFERRING_ENC_PRV_SEQ      AS DTL_REFERRING_ENC_PRV_SEQ,
+    dtl.DOS_FROM_DT                AS DTL_DOS_FROM_DT,
+    dtl.DOS_TO_DT                  AS DTL_DOS_TO_DT,
+    dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
+    dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
+    DATE(dtl.DISCHARGE_DT)         AS DTL_DISCHARGE_DT,
 
-    dtl.REV_SEQ                 AS DTL_REV_SEQ,
+    dtl.REV_SEQ                    AS DTL_REV_SEQ,
 
     dtl_prov_billing.ENC_PROV_ID   AS dtl_billing_ProviderInternalId,
     dtl_prov_billing.ID_NPI        AS dtl_billing_ProviderNPI,
 
     dtl_prov_servicing.ENC_PROV_ID AS dtl_servicing_ProviderInternalId,
-    dtl_prov_servicing.ID_NPI      AS dtl_servicing_ProviderNPI
+    dtl_prov_servicing.ID_NPI      AS dtl_servicing_ProviderNPI,
+  
+    dtl_prov_referring.ENC_PROV_ID AS dtl_referring_ProviderInternalId,
+    dtl_prov_referring.ID_NPI      AS dtl_referring_ProviderNPI
 
 FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_INST_LEG_HIST inst
 LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_INST_INFO_DTL_HIST dtl
@@ -1134,4 +1154,376 @@ LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_referring
     ON DTL_REFERRING_ENC_PRV_SEQ = dtl_prov_referring.ENC_PRV_SEQ
 
 WHERE inst.IND_OFFSET = 'N' AND DTL_IND_OFFSET = 'N'
- );
+
+UNION
+
+select DISTINCT
+    CURRENT_DATE()                 AS RUN_DATE,
+    prof.NUM_ICN,
+    prof.CDE_ENTITY_MODEL,
+    prof.CDE_ENC_MCO,
+    prof.CDE_ENC_ACO,
+    prof.ID_SUBMITTER,
+    prof.DOS_FROM_DT,
+    prof.CDE_CLM_TYPE              AS Claim_Type,
+    prof.CDE_CLM_STATUS,
+    prof.CDE_CLM_DISPOSITION,
+    prof.IND_OFFSET,
+    prof.IND_CROSSOVER,
+    prof.WH_FROM_DT,
+    prof.MD_BATCH_SEQ,
+
+    prof.CDE_BILL_FREQ,
+    prof.CDE_CONTRACT_TYPE,
+    prof.AMT_ALLOWED,
+    prof.AMT_PAID,
+    prof.AMT_BILLED,
+    prof.AMT_PAID_MCARE,
+    prof.AMT_COINSURANCE_MCARE,
+    prof.AMT_COPAY_MCARE,
+    prof.AMT_DEDUCT_MCARE,
+    NULL                           AS NUM_DAYS_COVD,
+
+    prof.DOS_TO_DT,
+    DATE(prof.ADMIT_DT_TM)         AS ADMIT_DT,
+    prof.MEM_SEQ                   AS FACT_MEM_SEQ,
+    prof.QTY_UNITS_BILLED,
+    DATE(prof.DISCHARGE_DT)        AS DISCHARGE_DT,
+    NULL                           AS CDE_ADMIT_TYPE,
+    NULL                           AS CDE_ADMIT_SOURCE,
+    NULL                           AS PatientStatusCode, -- AS CDE_PATIENT_STATUS
+    NULL                           AS CDE_TYPE_OF_BILL,
+    prof.DIAGRP_SEQ,
+
+    prof.BILLING_ENC_PRV_SEQ,
+    prof.SERVICING_ENC_PRV_SEQ,
+    prof.CDE_PLACE_OF_SERVICE,
+
+    --RX
+    NULL                           AS ADJUDICATION_DT,
+    NULL                           AS IND_GENERIC,
+    NULL                           AS PROC_SEQ,
+    NULL                           AS CDE_REC_STATUS,
+    NULL                           AS PHRM_CDE_NDC,
+    NULL                           AS IND_SCRIPT_OT,
+    NULL                           AS SCRIPT_WRITTEN_DT,
+    NULL                           AS CDE_DAWPROD_SEL,
+    NULL                           AS AMT_DISP_FEE,
+    NULL                           AS NUM_SCRIPT_SERV_REF,
+    NULL                           AS CDE_PRESC_ORIG,
+    NULL                           AS QTY_DISPD,
+    NULL                           AS DTL_CDE_NDC,
+  
+    prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
+    prov_billing.ID_NPI            AS billing_ProviderNPI,
+
+    prov_servicing.ENC_PROV_ID     AS servicing_ProviderInternalId,
+    prov_servicing.ID_NPI          AS servicing_ProviderNPI,
+
+    NULL                           AS attending_ProviderInternalId,
+    NULL                           AS attending_ProviderNPI,
+
+    prov_referring.ENC_PROV_ID     AS referring_ProviderInternalId,
+    prov_referring.ID_NPI          AS referring_ProviderNPI,
+    
+    NULL                           AS prescribing_ProviderInternalId,
+    NULL                           AS prescribing_ProviderNPI,
+
+    dtl.NUM_DTL,
+    dtl.CDE_CLM_STATUS DTL_CLM_STATUS,
+    dtl.IND_OFFSET                 AS DTL_IND_OFFSET,
+    
+    dtl.PROC_SEQ,
+    dtl.PROCMFRGRP_SEQ,
+
+    dtl.AMT_ALLOWED                AS DTL_AMT_ALLOWED,
+    dtl.AMT_PAID                   AS DTL_AMT_PAID,
+    dtl.AMT_BILLED                 AS DTL_AMT_BILLED,
+    dtl.AMT_PAID_MCARE             AS DTL_AMT_PAID_MCARE,
+    dtl.AMT_COINSURANCE_MCARE      AS DTL_AMT_COINSURANCE_MCARE,
+    dtl.AMT_COPAY_MCARE            AS DTL_AMT_COPAY_MCARE,
+    dtl.AMT_DEDUCT_MCARE           AS DTL_AMT_DEDUCT_MCARE,
+    
+    dtl.BILLING_ENC_PRV_SEQ        AS DTL_BILLING_ENC_PRV_SEQ,
+    dtl.SERVICING_ENC_PRV_SEQ      AS DTL_SERVICING_ENC_PRV_SEQ,
+    dtl.REFERRING_ENC_PRV_SEQ      AS DTL_REFERRING_ENC_PRV_SEQ,
+    dtl.DOS_FROM_DT                AS DTL_DOS_FROM_DT,
+    dtl.DOS_TO_DT                  AS DTL_DOS_TO_DT,
+    dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
+    dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
+    NULL                           AS DTL_DISCHARGE_DT,
+
+    NULL                           AS DTL_REV_SEQ,
+    
+    dtl_prov_billing.ENC_PROV_ID   AS dtl_billing_ProviderInternalId,
+    dtl_prov_billing.ID_NPI        AS dtl_billing_ProviderNPI,
+
+    dtl_prov_servicing.ENC_PROV_ID AS dtl_servicing_ProviderInternalId,
+    dtl_prov_servicing.ID_NPI      AS dtl_servicing_ProviderNPI,
+
+    dtl_prov_referring.ENC_PROV_ID AS dtl_referring_ProviderInternalId,
+    dtl_prov_referring.ID_NPI      AS dtl_referring_ProviderNPI
+
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_PROF_LEG_HIST prof
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROF_INFO_DTL_HIST dtl
+    ON prof.NUM_ICN = dtl.NUM_ICN
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_billing
+    ON prof.BILLING_ENC_PRV_SEQ = prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_servicing
+    ON prof.SERVICING_ENC_PRV_SEQ = prov_servicing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_referring
+    ON prof.REFERRING_ENC_PRV_SEQ = prov_referring.ENC_PRV_SEQ
+
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_billing
+    ON DTL_BILLING_ENC_PRV_SEQ = dtl_prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_servicing
+    ON DTL_SERVICING_ENC_PRV_SEQ = dtl_prov_servicing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_referring
+    ON DTL_SERVICING_ENC_PRV_SEQ = dtl_prov_referring.ENC_PRV_SEQ
+
+WHERE prof.IND_OFFSET = 'N'
+
+UNION
+
+select DISTINCT
+    CURRENT_DATE()                 AS RUN_DATE,
+    dntl.NUM_ICN,
+    dntl.CDE_ENTITY_MODEL,
+    dntl.CDE_ENC_MCO,
+    dntl.CDE_ENC_ACO,
+    dntl.ID_SUBMITTER,
+    dntl.DOS_FROM_DT,
+    dntl.CDE_CLM_TYPE              AS Claim_Type,
+    dntl.CDE_CLM_STATUS,
+    dntl.CDE_CLM_DISPOSITION,
+    dntl.IND_OFFSET,
+    dntl.IND_CROSSOVER,
+    dntl.WH_FROM_DT,
+    dntl.MD_BATCH_SEQ,
+
+    dntl.CDE_BILL_FREQ,
+    dntl.CDE_CONTRACT_TYPE,
+    NULL                           AS AMT_ALLOWED,
+    dntl.AMT_PAID,
+    dntl.AMT_BILLED,
+    dntl.AMT_PAID_MCARE,
+    dntl.AMT_COINSURANCE_MCARE,
+    dntl.AMT_COPAY_MCARE,
+    dntl.AMT_DEDUCT_MCARE,
+    NULL                           AS NUM_DAYS_COVD,
+    
+    dntl.DOS_TO_DT,
+    NULL                           AS ADMIT_DT,
+    dntl.MEM_SEQ                   AS FACT_MEM_SEQ,
+    dntl.QTY_UNITS_BILLED,
+    NULL                           AS DISCHARGE_DT,
+    NULL                           AS CDE_ADMIT_TYPE,
+    NULL                           AS CDE_ADMIT_SOURCE,
+    NULL                           AS PatientStatusCode, -- AS CDE_PATIENT_STATUS
+    NULL                           AS CDE_TYPE_OF_BILL,
+    dntl.DIAGRP_SEQ,
+
+    dntl.BILLING_ENC_PRV_SEQ,
+    dntl.SERVICING_ENC_PRV_SEQ,
+    dntl.CDE_PLACE_OF_SERVICE,
+
+    --RX
+    NULL                           AS ADJUDICATION_DT,
+    NULL                           AS IND_GENERIC,
+    NULL                           AS PROC_SEQ,
+    NULL                           AS CDE_REC_STATUS,
+    NULL                           AS PHRM_CDE_NDC,
+    NULL                           AS IND_SCRIPT_OT,
+    NULL                           AS SCRIPT_WRITTEN_DT,
+    NULL                           AS CDE_DAWPROD_SEL,
+    NULL                           AS AMT_DISP_FEE,
+    NULL                           AS NUM_SCRIPT_SERV_REF,
+    NULL                           AS CDE_PRESC_ORIG,
+    NULL                           AS QTY_DISPD,
+    NULL                           AS DTL_CDE_NDC,
+
+    prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
+    prov_billing.ID_NPI            AS billing_ProviderNPI,
+
+    prov_servicing.ENC_PROV_ID     AS servicing_ProviderInternalId,
+    prov_servicing.ID_NPI          AS servicing_ProviderNPI,
+
+    NULL                           AS attending_ProviderInternalId,
+    NULL                           AS attending_ProviderNPI,
+
+    prov_referring.ENC_PROV_ID     AS referring_ProviderInternalId,
+    prov_referring.ID_NPI          AS referring_ProviderNPI,
+
+    NULL                           AS prescribing_ProviderInternalId,
+    NULL                           AS prescribing_ProviderNPI,
+
+    dtl.NUM_DTL,
+    dtl.CDE_CLM_STATUS             AS DTL_CLM_STATUS,
+    dtl.IND_OFFSET                 AS DTL_IND_OFFSET,
+
+    dtl.PROC_SEQ,
+    dtl.PROCMFRGRP_SEQ,
+
+    NULL                           AS DTL_AMT_ALLOWED,
+    dtl.AMT_PAID                   AS DTL_AMT_PAID,
+    dtl.AMT_BILLED                 AS DTL_AMT_BILLED,
+    dtl.AMT_PAID_MCARE             AS DTL_AMT_PAID_MCARE,
+    dtl.AMT_COINSURANCE_MCARE      AS DTL_AMT_COINSURANCE_MCARE,
+    dtl.AMT_COPAY_MCARE            AS DTL_AMT_COPAY_MCARE,
+    dtl.AMT_DEDUCT_MCARE           AS DTL_AMT_DEDUCT_MCARE,
+
+    dtl.BILLING_ENC_PRV_SEQ        AS DTL_BILLING_ENC_PRV_SEQ,
+    dtl.SERVICING_ENC_PRV_SEQ      AS DTL_SERVICING_ENC_PRV_SEQ,
+    NULL                           AS DTL_REFERRING_ENC_PRV_SEQ,
+    dtl.DOS_FROM_DT                AS DTL_DOS_FROM_DT,
+    dtl.DOS_TO_DT                  AS DTL_DOS_TO_DT,
+    dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
+    dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
+    NULL                           AS DTL_DISCHARGE_DT,
+
+    NULL AS DTL_REV_SEQ,
+    
+    dtl_prov_billing.ENC_PROV_ID   AS dtl_billing_ProviderInternalId,
+    dtl_prov_billing.ID_NPI        AS dtl_billing_ProviderNPI,
+
+    dtl_prov_servicing.ENC_PROV_ID AS dtl_servicing_ProviderInternalId,
+    dtl_prov_servicing.ID_NPI      AS dtl_servicing_ProviderNPI,
+
+    NULL                           AS dtl_referring_ProviderInternalId,
+    NULL                           AS dtl_referring_ProviderNPI
+
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_DNTL_LEG_HIST dntl
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_DNTL_INFO_DTL_HIST dtl
+    ON dntl.NUM_ICN = dtl.NUM_ICN
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_billing
+    ON dntl.BILLING_ENC_PRV_SEQ = prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_servicing
+    ON dntl.SERVICING_ENC_PRV_SEQ = prov_servicing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_referring
+    ON dntl.REFERRING_ENC_PRV_SEQ = prov_referring.ENC_PRV_SEQ
+
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_billing
+    ON DTL_BILLING_ENC_PRV_SEQ = dtl_prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST dtl_prov_servicing
+    ON DTL_SERVICING_ENC_PRV_SEQ = dtl_prov_servicing.ENC_PRV_SEQ
+
+WHERE dntl.IND_OFFSET = 'N'
+
+UNION
+
+select DISTINCT
+    CURRENT_DATE() AS RUN_DATE,
+    phrm.NUM_ICN,
+    phrm.CDE_ENTITY_MODEL,
+    phrm.CDE_ENC_MCO,
+    phrm.CDE_ENC_ACO,
+    NULL AS ID_SUBMITTER,
+    phrm.DOS_FROM_DT,
+    phrm.CDE_CLM_TYPE              AS Claim_Type,
+    phrm.CDE_CLM_STATUS,
+    phrm.CDE_CLM_DISPOSITION,
+    phrm.IND_OFFSET,
+    phrm.IND_CROSSOVER,
+    phrm.WH_FROM_DT,
+    phrm.MD_BATCH_SEQ,
+
+    NULL                           AS CDE_BILL_FREQ,
+    NULL                           AS CDE_CONTRACT_TYPE,
+    phrm.AMT_ALLOWED,
+    phrm.AMT_PAID,
+    phrm.AMT_BILLED,
+    phrm.AMT_PAID_MCARE,
+    phrm.AMT_COINSURANCE_MCARE,
+    phrm.AMT_COPAY_MCARE,
+    phrm.AMT_DEDUCT_MCARE,
+    NULL                           AS NUM_DAYS_COVD,
+    
+    phrm.DOS_TO_DT,
+    NULL                           AS ADMIT_DT,
+    phrm.MEM_SEQ                   AS FACT_MEM_SEQ,
+    phrm.QTY_UNITS_BILLED,
+    NULL                           AS DISCHARGE_DT,
+    NULL                           AS CDE_ADMIT_TYPE,
+    NULL                           AS CDE_ADMIT_SOURCE,
+    NULL                           AS PatientStatusCode, -- AS CDE_PATIENT_STATUS
+    NULL                           AS CDE_TYPE_OF_BILL,
+    phrm.DIAGRP_SEQ,
+
+    phrm.BILLING_ENC_PRV_SEQ,
+    NULL                           AS SERVICING_ENC_PRV_SEQ,
+    NULL                           AS CDE_PLACE_OF_SERVICE,
+
+    --RX
+    DATE(ADJUDICATION_DT_TM)       AS ADJUDICATION_DT,
+    IND_GENERIC,
+    phrm.PROC_SEQ,
+    phrm.CDE_REC_STATUS,
+    phrm.CDE_NDC AS PHRM_CDE_NDC,
+    phrm.IND_SCRIPT_OT,
+    phrm.SCRIPT_WRITTEN_DT,
+    phrm.CDE_DAWPROD_SEL,
+    phrm.AMT_DISP_FEE,
+    phrm.NUM_SCRIPT_SERV_REF,
+    phrm.CDE_PRESC_ORIG,
+    phrm.QTY_DISPD,
+    dtl.CDE_NDC                    AS DTL_CDE_NDC,
+
+    prov_billing.ENC_PROV_ID AS billing_ProviderInternalId,
+    prov_billing.ID_NPI AS billing_ProviderNPI,
+
+    NULL                           AS servicing_ProviderInternalId,
+    NULL                           AS servicing_ProviderNPI,
+
+    NULL                           AS attending_ProviderInternalId,
+    NULL                           AS attending_ProviderNPI,
+
+    NULL                           AS referring_ProviderInternalId,
+    NULL                           AS referring_ProviderNPI,
+    
+    prov_prescribing.ENC_PROV_ID   AS prescribing_ProviderInternalId,
+    prov_prescribing.ID_NPI        AS prescribing_ProviderNPI,
+
+    CASE WHEN dtl.NUM_DTL IS NULL THEN 0 ELSE dtl.NUM_DTL END AS NUM_DTL,
+    NULL                           AS DTL_CLM_STATUS,
+    dtl.IND_OFFSET                 AS DTL_IND_OFFSET,
+    
+    NULL                           AS PROC_SEQ,
+    NULL                           AS PROCMFRGRP_SEQ,
+
+    NULL                           AS DTL_AMT_ALLOWED,
+    NULL                           AS DTL_AMT_PAID,
+    NULL                           AS DTL_AMT_BILLED,
+    NULL                           AS DTL_AMT_PAID_MCARE,
+    NULL                           AS DTL_AMT_COINSURANCE_MCARE,
+    NULL                           AS DTL_AMT_COPAY_MCARE,
+    NULL                           AS DTL_AMT_DEDUCT_MCARE,
+
+    NULL                           AS DTL_BILLING_ENC_PRV_SEQ,
+    NULL                           AS DTL_SERVICING_ENC_PRV_SEQ,
+    NULL                           AS DTL_REFERRING_ENC_PRV_SEQ,
+    NULL                           AS DTL_DOS_FROM_DT,
+    NULL                           AS DTL_DOS_TO_DT,
+    NULL                           AS DTL_FACT_MEM_SEQ,
+    dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,   
+    NULL                           AS DTL_DISCHARGE_DT,
+
+    NULL                           AS DTL_REV_SEQ,
+
+    NULL                           AS dtl_billing_ProviderInternalId,
+    NULL                           AS dtl_billing_ProviderNPI,
+    NULL                           AS dtl_servicing_ProviderInternalId,
+    NULL                           AS dtl_servicing_ProviderNPI,
+    NULL                           AS dtl_referring_ProviderInternalId,
+    NULL                           AS dtl_referring_ProviderNPI
+
+
+FROM MHDWQA.SENDPRO.SPRO_B_ENC_CLAIM_PHRM_LEG_HIST phrm
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PHRM_INFO_DTL_HIST dtl
+    ON phrm.NUM_ICN = dtl.NUM_ICN
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_billing
+    ON phrm.BILLING_ENC_PRV_SEQ = prov_billing.ENC_PRV_SEQ
+LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_PROVIDER_HIST prov_prescribing
+    ON phrm.PRESCRIBING_ENC_PRV_SEQ = prov_prescribing.ENC_PRV_SEQ
+
+WHERE phrm.IND_OFFSET = 'N'
+  );
