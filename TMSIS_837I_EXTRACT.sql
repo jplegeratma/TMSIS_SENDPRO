@@ -633,6 +633,8 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 from Final - Target
 55	MPT_SENDPRO_Validate_BilledAmount	If BILLED-AMT is null or less than zero then 0 else 1
 
+?? This is similar to 2.001.21 but for RX only
+
 */
 
     CASE WHEN CDE_CLM_TYPE NOT IN ('P','Q')
@@ -762,6 +764,12 @@ END AS CompoundNDC1X,
         --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
+
+    WHEN (IND_SCRIPT_OT = 'O') OR (DTL_CDE_NDC IS NULL) THEN 'NOT APP'
+    WHEN NOT EXISTS (SELECT CDE_NDC FROM MHDWQA.NW.NW_B_DRUG WHERE CDE_NDC = DTL_CDE_NDC AND CDE_NDC NOT IN ('#','**','+','-','$','  ')) 
+	THEN 'INVALID'
+
+
         ELSE 'VALID'
     END AS CompoundDrugInd1X,
 
@@ -776,11 +784,22 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
 
 /*
-2.001.12	Measure	Medium	% missing: MEDICAID-COV-INPATIENT-	<= 2% missing	
+2.001.12	Measure	Medium	% missing: MEDICAID-COV-INPATIENT-DAYS	<= 2% missing	
 IP	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing MEDICAID-COV-INPATIENT-DAYS	
+
+SPRO_B_ENC_CLAIM_INST_LEG_HIST.NUM_DAYS_COVD
+
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN NUM_DAYS_COVD IS NULL OR NUM_DAYS_COVD < 0 THEN 'INVALID'
+    ELSE 'VALID'
+    END AS MedicaidCovInpatientDays1X,
 
 /*
 2.001.13	Measure	Medium	 % missing: PRESCRIBING-PROV-NUM 	<= 10% missing	
@@ -788,6 +807,20 @@ RX
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Prescribing Provider PID/SL	
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('P','Q')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- From Target
+         WHEN (prescribing_ProviderInternalId IS NULL) THEN 'NULL'
+		 WHEN 
+         (
+              (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = prescribing_ProviderInternalId)) 
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+         END AS PrescribingProviderInternalId1X,
 
 /*
 2.001.14	Measure	Medium	 % missing: PRESCRIBING-PROV-NPI-NUM 	<= 2% missing	
@@ -795,20 +828,95 @@ RX
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Prescribing Provider NPI	
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('P','Q')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- From Target
+         WHEN 
+                ((prescribing_ProviderNPI IS NULL) OR prescribing_ProviderNPI IN ('0','000000000','0000000000')) 
+         THEN 'NULL'
+            
+         WHEN 
+              (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = prescribing_ProviderNPI))
+         THEN 'INVALID'
+         ELSE 'VALID' 
+         END AS PrescribingProviderNPI1X,
 
 /*
 2.001.15	Measure	Medium	% missing: REVENUE-CHARGE 	<= 2% missing	
 "IP LP"	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REVENUE-CHARGE	
+
+From dashboard data needed
+
+IP	SPRO_B_ENC_INST_INFO_DTL_HIST.AMT_BILLED
+LT	SPRO_B_ENC_INST_INFO_DTL_HIST.AMT_SVC_LINE_CHARGE
+
+?? SVCLINECHARGEAMT
+only found in STG_B_ENC_PROF_INFO_DTL_SCRUB_* tables
+
+Otherwise same as Amt_Billed - 2.001.21
 */
+
 
 
 /*
 2.001.16	Measure	Medium	% missing: REBATE-ELIGIBLE-INDICATOR 	<= 20% missing	
 RX	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REBATE-ELIGIBLE-INDICATOR	
+
+?? Where REBATE is found:
+
+MHDWQA	NW	NW_B_ENC_ATTRIBUTE	IND_ENC_REBATE
+MHDWQA	NW	NW_B_ENC_DENIED_CLAIM	REBATE_INDICATOR
+
+MHDWQA	NW	NW_ENC_ATTRIBUTE	IND_ENC_REBATE
+MHDWQA	NW	NW_ENC_DENIED_CLAIM	REBATE_INDICATOR
+
+MHDWQA	NW	ODS_ENCOUNTER	REBATE_INDICATOR
+MHDWQA	NW	ODS_ENCOUNTER_VW	REBATE_INDICATOR
+
+MHDWQA	SENDPRO	RAW_SPRO_NCPDP_CLAIM	PatientFormRebateAmt
+MHDWQA	SENDPRO	RAW_SPRO_NCPDP_COMPOUND_DTL	CompndRebateAmt
+
+MHDWQA	SENDPRO	SPRO_B_ENC_CLAIM_PHRM_LEG_HIST	AMT_PATIENT_FORM_REBATE
+MHDWQA	SENDPRO	SPRO_B_ENC_PHRM_DRUG_ATTRIBUTE	AMT_COMPND_REBATE
+
+MHDWQA	SENDPRO	STG_ENC_PHRM_DRUG_ATTR_STAGE	AMT_COMPND_REBATE
+MHDWQA	SENDPRO	STG_ENC_PHRM_LEG_INS	AMT_PATIENT_FORM_REBATE
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB	ORIG_PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB	PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_1	ORIG_PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_1	PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_2	ORIG_PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_2	PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_3	ORIG_PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_3	PATIENT_FORM_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_STAGE	AMT_PATIENT_FORM_REBATE
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR	AMT_COMPND_REBATE
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_DTL	COMPND_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_DTL	ORIG_COMPND_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_HDR	COMPND_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_HDR	ORIG_COMPND_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DTL_SCRUB	COMPND_REBATE_AMT
+MHDWQA	SENDPRO	STG_SPRO_PHRM_DTL_SCRUB_1	COMPND_REBATE_AMT
+
+Using SPRO_B_ENC_CLAIM_PHRM_LEG_HIST.AMT_PATIENT_FORM_REBATE
+
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('P','Q')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+
+         WHEN AMT_PATIENT_FORM_REBATE IS NULL THEN NULL
+         WHEN AMT_PATIENT_FORM_REBATE < 0 THEN 'INVALID'
+         ELSE 'VALID'  
+         END AS RebateEligibleInd1X,
 
 /*
 2.001.17	Measure	Medium	% missing: REFERRING-PROV-NUM 	<= 98% missing	
@@ -816,12 +924,52 @@ OT
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Referring Provider PID/SL	
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('O')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+
+-- From Target Servicing Provider Internal ID
+         WHEN (Referring_ProviderInternalId IS NULL) AND (dtl_referring_ProviderInternalId IS NULL)THEN 'NULL'
+		 WHEN 
+         (
+              (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = Referring_ProviderInternalId)) 
+          AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_referring_ProviderInternalId))
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+         END AS ReferringProviderInternalId1X,
 
 /*
 2.001.18	Measure	Medium	% missing: REFERRING-PROV-NPI-NUM	>= 90% present	
 IP	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Referring Provider NPI	
 */
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('O')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+
+-- From Target Servicing Provider NPI
+    CASE  
+         WHEN 
+         (
+                ((Referring_ProviderNPI IS NULL) OR Referring_ProviderNPI IN ('0','000000000','0000000000')) 
+            AND ((dtl_referring_ProviderNPI IS NULL) OR dtl_referring_ProviderNPI IN ('0','000000000','0000000000'))
+         )            
+         THEN 'NULL'
+            
+         WHEN 
+         (
+              (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = Referring_ProviderNPI)) 
+          AND (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = dtl_referring_ProviderNPI))
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+         END AS ReferringProviderNPI1X,
 
 
 /*
@@ -830,12 +978,40 @@ OT
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Servicing Provider PID/SL	
 */
 
+    CASE WHEN CDE_CLM_TYPE NOT IN ('O')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- From Target Servicing Provider Internal ID
+         WHEN (servicing_ProviderInternalId IS NULL) AND (dtl_servicing_ProviderInternalId IS NULL)THEN 'NULL'
+		 WHEN 
+         (
+              (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = servicing_ProviderInternalId)) 
+          AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_servicing_ProviderInternalId))
+         )
+         THEN 'INVALID'
+         ELSE 'VALID' 
+         END AS ServicingProviderInternalId1X,
 
 /*
 2.001.20	Measure	Medium	% missing: TOT-ALLOWED-AMT 	<= 2% missing	
 "IP LT OT RX"	
 This measure should show % of IP, LT, OT, and RX claims missing Total Allowed Amount 	
 */
+
+    CASE WHEN CDE_CLM_TYPE NOT IN ('I','L','O','P','Q')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','R')
+        --OR IND_CROSSOVER = 'N'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+-- from Target
+    WHEN AMT_ALLOWED IS NULL AND DTL_AMT_ALLOWED IS NULL THEN 'NULL'
+    WHEN AMT_ALLOWED <= 0 OR DTL_AMT_ALLOWED <= 0 THEN 'INVALID'
+    ELSE 'VALID'
+END AS ClaimAllowableAmount1X,
+
+------
 
 CASE WHEN CLAIM_TYPE = 'I' THEN 1 ELSE 0 END INPAT,
 CASE WHEN CLAIM_TYPE = 'O' THEN 1 ELSE 0 END OUTPAT,
@@ -874,6 +1050,7 @@ select DISTINCT
     inst.AMT_COINSURANCE_MCARE,
     inst.AMT_COPAY_MCARE,
     inst.AMT_DEDUCT_MCARE,
+    inst.NUM_DAYS_COVD,
 
     inst.DOS_TO_DT,
     inst.ADMIT_DT_TM,
