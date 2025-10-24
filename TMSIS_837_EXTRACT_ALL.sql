@@ -1029,6 +1029,7 @@ INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT
 
 select DISTINCT
     CURRENT_DATE()                 AS RUN_DATE,
+    'INST'                         AS CLAIM_LEG_TYPE,
     inst.NUM_ICN,
     inst.CDE_ENTITY_MODEL,
     inst.CDE_ENC_MCO,
@@ -1159,6 +1160,7 @@ UNION
 
 select DISTINCT
     CURRENT_DATE()                 AS RUN_DATE,
+    'PROF'                         AS CLAIM_LEG_TYPE,
     prof.NUM_ICN,
     prof.CDE_ENTITY_MODEL,
     prof.CDE_ENC_MCO,
@@ -1287,6 +1289,7 @@ UNION
 
 select DISTINCT
     CURRENT_DATE()                 AS RUN_DATE,
+    'DNTL'                         AS CLAIM_LEG_TYPE,
     dntl.NUM_ICN,
     dntl.CDE_ENTITY_MODEL,
     dntl.CDE_ENC_MCO,
@@ -1413,6 +1416,7 @@ UNION
 
 select DISTINCT
     CURRENT_DATE() AS RUN_DATE,
+    'PHRM'                         AS CLAIM_LEG_TYPE,
     phrm.NUM_ICN,
     phrm.CDE_ENTITY_MODEL,
     phrm.CDE_ENC_MCO,
