@@ -1,12 +1,12 @@
--- TMSIS 837I EXTRACT SCRIPT
+-- TMSIS 837 EXTRACT SCRIPT
 
--- DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I;
+-- DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
--- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I AS
+-- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837 AS
 
--- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I;
+-- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
---INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837I
+--INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
 SELECT DISTINCT
     RUN_DATE,
     NUM_ICN,
@@ -64,7 +64,6 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
     END AS PatientStatusCode1X,
 
 /*
-
 2.001.32	Measure	Critical	 % missing: MSIS-IDENTIFICATION-NUM	2%	
 "IP LT OT RX"	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims - claims missing: MSIS-IDENTIFICATION-NUM	SIMILAR IN SENDPRO TARGET DASHBOARD
@@ -438,7 +437,8 @@ from Target
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN DTL_REV_SEQ IS NULL THEN 'NULL'
-    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
+--    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
+    WHEN NOT EXISTS (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
     ELSE 'VALID'
     END AS RevenueCode1X,
 
@@ -559,18 +559,15 @@ ATTENDING_ENC_PRV_SEQ
 Use this SEQ to match the ENC_PRV_SEQ in the SPRO_B_ENC_PROVIDER_HIST table and select ID_NPI for ADMITTING-PROV-NPI_NUM
 */
 
-
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O','R')
         --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- like Target
-        WHEN (attending_ProviderInternalId IS NULL) AND (dtl_attending_ProviderInternalId IS NULL) THEN 'NULL'
-    	WHEN ( 
-               (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = attending_ProviderInternalId) )
-           AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_attending_ProviderInternalId) )
-         )
+        WHEN attending_ProviderInternalId IS NULL THEN 'NULL'
+    	WHEN 
+             NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = attending_ProviderInternalId) 
          THEN 'INVALID'
          ELSE 'VALID' 
     END AS AttendingProviderInternalId1X,
@@ -588,16 +585,10 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
         THEN 'NOT APP'
 -- like Target
          WHEN 
-         (
                ((attending_ProviderNPI IS NULL) OR attending_ProviderNPI IN ('0','000000000','0000000000') ) 
-           AND ((dtl_attending_ProviderNPI IS NULL) OR dtl_attending_ProviderNPI IN ('0','000000000','0000000000') )
-         )            
             THEN 'NULL'
 		 WHEN 
-         (
               (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = attending_ProviderNPI))
-          AND (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = dtl_attending_ProviderNPI)) 
-         )
          THEN 'INVALID'
          ELSE 'VALID' 
     END AS AttendingProviderNPI1X,
@@ -1080,6 +1071,7 @@ select DISTINCT
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
     NULL                           AS QTY_DISPD,
+    NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
 
     prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
@@ -1210,6 +1202,7 @@ select DISTINCT
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
     NULL                           AS QTY_DISPD,
+    NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
   
     prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
@@ -1338,6 +1331,7 @@ select DISTINCT
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
     NULL                           AS QTY_DISPD,
+    NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
 
     prov_billing.ENC_PROV_ID       AS billing_ProviderInternalId,
@@ -1464,6 +1458,7 @@ select DISTINCT
     phrm.NUM_SCRIPT_SERV_REF,
     phrm.CDE_PRESC_ORIG,
     phrm.QTY_DISPD,
+    phrm.AMT_PATIENT_FORM_REBATE,
     dtl.CDE_NDC                    AS DTL_CDE_NDC,
 
     prov_billing.ENC_PROV_ID AS billing_ProviderInternalId,
