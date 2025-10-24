@@ -1061,7 +1061,6 @@ select DISTINCT
     --RX
     NULL                           AS ADJUDICATION_DT,
     NULL                           AS IND_GENERIC,
-    NULL                           AS PROC_SEQ,
     NULL                           AS CDE_REC_STATUS,
     NULL                           AS PHRM_CDE_NDC,
     NULL                           AS IND_SCRIPT_OT,
@@ -1192,7 +1191,6 @@ select DISTINCT
     --RX
     NULL                           AS ADJUDICATION_DT,
     NULL                           AS IND_GENERIC,
-    NULL                           AS PROC_SEQ,
     NULL                           AS CDE_REC_STATUS,
     NULL                           AS PHRM_CDE_NDC,
     NULL                           AS IND_SCRIPT_OT,
@@ -1321,7 +1319,6 @@ select DISTINCT
     --RX
     NULL                           AS ADJUDICATION_DT,
     NULL                           AS IND_GENERIC,
-    NULL                           AS PROC_SEQ,
     NULL                           AS CDE_REC_STATUS,
     NULL                           AS PHRM_CDE_NDC,
     NULL                           AS IND_SCRIPT_OT,
@@ -1480,7 +1477,6 @@ select DISTINCT
     NULL                           AS DTL_CLM_STATUS,
     dtl.IND_OFFSET                 AS DTL_IND_OFFSET,
     
-    NULL                           AS PROC_SEQ,
     NULL                           AS PROCMFRGRP_SEQ,
 
     NULL                           AS DTL_AMT_ALLOWED,
