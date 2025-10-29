@@ -44,6 +44,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
     AND IND_CROSSOVER = 'N'
     AND CDE_CLM_STATUS = 'P'
 	AND PatientStatusCode IS NOT NULL
+	AND PatientStatusCode NOT IN ('#','+','-')
     AND PatientStatusCode IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
     AND PatientStatusCode <> '30' -- STILL PATIENT
     AND (DISCHARGE_DT IS NOT NULL and DISCHARGE_DT >= ADMIT_DT)
@@ -55,7 +56,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
         OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-        WHEN PatientStatusCode IS NULL THEN 'NULL'
+        WHEN PatientStatusCode IS NULL OR PatientStatusCode IN ('#','+','-') THEN 'NULL'
         WHEN PatientStatusCode NOT IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_PATIENT_STATUS' 
             AND CDE_CHAR NOT IN ('#','**','+','-','$','  '))
         THEN 'NULL'
@@ -74,7 +75,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
         OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-        WHEN FACT_MEM_SEQ IS NULL AND DTL_FACT_MEM_SEQ IS NULL THEN 'NULL'
+        WHEN (FACT_MEM_SEQ IS NULL OR FACT_MEM_SEQ IN (-1,-4,-5)) AND (DTL_FACT_MEM_SEQ IS NULL OR DTL_FACT_MEM_SEQ IN (-1,-4,-5)) THEN 'NULL'
         WHEN FACT_MEM_SEQ <= 0 AND DTL_FACT_MEM_SEQ <= 0 THEN 'INVALID'
 		WHEN  (
               ( NOT EXISTS (SELECT ID_MEDICAID from MHDWQA.NW.NW_MEMBER mem WHERE FACT_MEM_SEQ = mem.MEM_SEQ AND ID_MEDICAID NOT IN ('#','+','-',' ')) )
@@ -341,8 +342,8 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
 -- from Target
          WHEN 
          (
-               ((billing_ProviderNPI IS NULL) OR billing_ProviderNPI IN ('0','000000000','0000000000') ) 
-           AND ((dtl_billing_ProviderNPI IS NULL) OR dtl_billing_ProviderNPI IN ('0','000000000','0000000000') )
+               (billing_ProviderNPI IS NULL OR billing_ProviderNPI IN ('#','+','-') OR billing_ProviderNPI IN ('0','000000000','0000000000') ) 
+           AND (dtl_billing_ProviderNPI IS NULL OR dtl_billing_ProviderNPI IN ('#','+','-') OR dtl_billing_ProviderNPI IN ('0','000000000','0000000000') )
          )            
             THEN 'NULL'
 		 WHEN 
@@ -374,7 +375,7 @@ Final - Target
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-         WHEN (billing_ProviderInternalId IS NULL) AND (dtl_billing_ProviderInternalId IS NULL) THEN 'NULL'
+         WHEN (billing_ProviderInternalId IS NULL OR billing_ProviderInternalId IN ('#','+','-')) AND (dtl_billing_ProviderInternalId IS NULL OR dtl_billing_ProviderInternalId IN ('#','+','-')) THEN 'NULL'
 		 WHEN ( 
                (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = billing_ProviderInternalId) )
            AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_billing_ProviderInternalId) )
@@ -408,8 +409,8 @@ If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-f
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-    WHEN AMT_BILLED IS NULL AND DTL_AMT_BILLED IS NULL THEN 'NULL'
-    WHEN AMT_BILLED < 0 OR DTL_AMT_BILLED < 0 THEN 'INVALID'
+    WHEN AMT_BILLED IS NULL OR AND DTL_AMT_BILLED IS NULL THEN 'INVALID'
+    WHEN AMT_BILLED <= 0 AND DTL_AMT_BILLED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimBilledAmount1X,
 
@@ -436,7 +437,7 @@ from Target
         OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-    WHEN DTL_REV_SEQ IS NULL THEN 'NULL'
+    WHEN DTL_REV_SEQ IS NULL OR DTL_REV_SEQ IN (-1,-4,-5) THEN 'NULL'
 --    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
     WHEN NOT EXISTS (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
     ELSE 'VALID'
@@ -533,9 +534,10 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
         OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-    WHEN (  (AMT_PAID_MCARE > 0) 
-        OR  (AMT_COINSURANCE_MCARE > 0)
-        OR  (AMT_DEDUCT_MCARE > 0)
+
+    WHEN (  (AMT_PAID_MCARE IS NOT NULL AND AMT_PAID_MCARE > 0) 
+        OR  (AMT_COINSURANCE_MCARE IS NOT NULL AND AMT_COINSURANCE_MCARE > 0)
+        OR  (AMT_DEDUCT_MCARE IS NOT NULL AND AMT_DEDUCT_MCARE > 0)
         ) THEN 'INVALID' 
     ELSE 'VALID'
     END AS AmtPaidCoDedMcareHdrNonXOver1X,
@@ -565,7 +567,7 @@ Use this SEQ to match the ENC_PRV_SEQ in the SPRO_B_ENC_PROVIDER_HIST table and 
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- like Target
-        WHEN attending_ProviderInternalId IS NULL THEN 'NULL'
+        WHEN attending_ProviderInternalId IS NULL OR attending_ProviderInternalId IN ('#','+','-') THEN 'NULL'
     	WHEN 
              NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = attending_ProviderInternalId) 
          THEN 'INVALID'
@@ -585,7 +587,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
         THEN 'NOT APP'
 -- like Target
          WHEN 
-               ((attending_ProviderNPI IS NULL) OR attending_ProviderNPI IN ('0','000000000','0000000000') ) 
+               (attending_ProviderNPI IS NULL OR attending_ProviderNPI IN ('#','+','-') OR attending_ProviderNPI IN ('0','000000000','0000000000') ) 
             THEN 'NULL'
 		 WHEN 
               (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = attending_ProviderNPI))
@@ -610,7 +612,7 @@ from final - target
         THEN 'NOT APP'
 
 -- from Final - Target
-        WHEN CDE_ADMIT_TYPE IS NULL THEN 'NULL'
+        WHEN CDE_ADMIT_TYPE IS NULL OR CDE_ADMIT_TYPE IN ('#','+','-') THEN 'NULL'
         WHEN CDE_ADMIT_TYPE NOT IN (SELECT CDE_CHAR FROM MHDWQA.NW.NW_SUP_CODE_REF WHERE CDE_GROUP = 'CDE_ADMIT_TYPE' AND CDE_CHAR NOT IN ('#','**','+','-','$','  ')) THEN 'INVALID'
         ELSE 'VALID'
     END AS TypeOfAdmission1X,
@@ -633,8 +635,8 @@ from Final - Target
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-    WHEN AMT_BILLED IS NULL AND DTL_AMT_BILLED IS NULL THEN 'NULL'
-    WHEN AMT_BILLED < 0 OR DTL_AMT_BILLED < 0 THEN 'INVALID'
+    WHEN AMT_BILLED IS NULL AND DTL_AMT_BILLED IS NULL THEN 'INVALID'
+    WHEN AMT_BILLED <= 0 AND DTL_AMT_BILLED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimBilledAmountRx1X,
     
@@ -724,7 +726,7 @@ IND_GENERIC
         --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-        WHEN (IND_GENERIC IS NULL) OR IND_GENERIC NOT IN ('Y','N','B','G')  THEN 'INVALID'
+        WHEN IND_GENERIC IS NULL OR IND_GENERIC IN ('#','+','-') OR IND_GENERIC NOT IN ('Y','N','B','G')  THEN 'INVALID'
         ELSE 'VALID'
         END AS BrandGenericInd1X,
 
@@ -803,7 +805,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- From Target
-         WHEN (prescribing_ProviderInternalId IS NULL) THEN 'NULL'
+         WHEN prescribing_ProviderInternalId IS NULL OR prescribing_ProviderInternalId IN ('#','+','-') THEN 'NULL'
 		 WHEN 
          (
               (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = prescribing_ProviderInternalId)) 
@@ -825,7 +827,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
         THEN 'NOT APP'
 -- From Target
          WHEN 
-                ((prescribing_ProviderNPI IS NULL) OR prescribing_ProviderNPI IN ('0','000000000','0000000000')) 
+                (prescribing_ProviderNPI IS NULL OR prescribing_ProviderNPI IN ('#','+','-') OR prescribing_ProviderNPI IN ('0','000000000','0000000000')) 
          THEN 'NULL'
             
          WHEN 
@@ -903,7 +905,7 @@ Using SPRO_B_ENC_CLAIM_PHRM_LEG_HIST.AMT_PATIENT_FORM_REBATE
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
-         WHEN AMT_PATIENT_FORM_REBATE IS NULL THEN NULL
+         WHEN AMT_PATIENT_FORM_REBATE IS NULL THEN 'INVALID'
          WHEN AMT_PATIENT_FORM_REBATE < 0 THEN 'INVALID'
          ELSE 'VALID'  
          END AS RebateEligibleInd1X,
@@ -946,8 +948,8 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 -- From Target Servicing Provider NPI
          WHEN 
          (
-                ((Referring_ProviderNPI IS NULL) OR Referring_ProviderNPI IN ('0','000000000','0000000000')) 
-            AND ((dtl_referring_ProviderNPI IS NULL) OR dtl_referring_ProviderNPI IN ('0','000000000','0000000000'))
+                (Referring_ProviderNPI IS NULL OR Referring_ProviderNPI IN ('#','+','-') OR Referring_ProviderNPI IN ('0','000000000','0000000000')) 
+            AND (dtl_referring_ProviderNPI IS NULL OR dtl_referring_ProviderNPI IN ('#','+','-') OR dtl_referring_ProviderNPI IN ('0','000000000','0000000000'))
          )            
          THEN 'NULL'
             
@@ -995,8 +997,8 @@ This measure should show % of IP, LT, OT, and RX claims missing Total Allowed Am
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-    WHEN AMT_ALLOWED IS NULL AND DTL_AMT_ALLOWED IS NULL THEN 'NULL'
-    WHEN AMT_ALLOWED <= 0 OR DTL_AMT_ALLOWED <= 0 THEN 'INVALID'
+    WHEN AMT_ALLOWED NOT IN (-1,-4,-5) AND DTL_AMT_ALLOWED NOT IN (-1,-4,-5) THEN 'INVALID'
+    WHEN AMT_ALLOWED <= 0 AND DTL_AMT_ALLOWED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimAllowableAmount1X,
 
