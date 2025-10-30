@@ -7,6 +7,7 @@ CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837 AS
 -- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
 --INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
+
 SELECT DISTINCT
     RUN_DATE,
     NUM_ICN,
@@ -124,7 +125,10 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 claim header record segments missing ADJUDICATION-DATE	
 Record segment just references the line, header or other segment table used. So this just means claim headers.
 
-?? WH_FROM_DT 
+??
+ADJUDICATION-DATE is only on RX header
+WH_FROM_DT is the date the Warehouse ETL process is started, after plans have processed, submitted, Deloitte has processed XML and sent to DW.
+Suggest using Adjudication date for PHRM and DOS_FROM_DT for others? 
 
 from Final
 54	MPT_SENDPRO_Validate_Adjudication_Date	NCPDP:
@@ -313,7 +317,7 @@ RX
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claims missing: PRESCRIPTION-FILL-DATE	
 
 ?? DTE_DISPENSE not in SPRO_B_ENC_CLAIM_PHRM_LEG_HIST
-Either use ADJUDICATION_DT or DOS_FROM_DT?
+Suggest either using ADJUDICATION_DT or DOS_FROM_DT?
 
 */
 
@@ -409,7 +413,7 @@ If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-f
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-    WHEN AMT_BILLED IS NULL OR AND DTL_AMT_BILLED IS NULL THEN 'INVALID'
+    WHEN AMT_BILLED IS NULL AND DTL_AMT_BILLED IS NULL THEN 'INVALID'
     WHEN AMT_BILLED <= 0 AND DTL_AMT_BILLED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimBilledAmount1X,
@@ -771,7 +775,8 @@ END AS CompoundNDC1X,
 RX	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing Dispensing PID/SL	
 
-?? Have Billing and Prescribing - is Dispensing same as Billing?
+?? RX has Billing and Prescribing providers - is Dispensing same as Billing?
+If yes, could add RX to 01
 */
 
 
@@ -841,13 +846,14 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 "IP LP"	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REVENUE-CHARGE	
 
+Dont see Revenue Charge field
+
 From dashboard data needed
 
 IP	SPRO_B_ENC_INST_INFO_DTL_HIST.AMT_BILLED
 LT	SPRO_B_ENC_INST_INFO_DTL_HIST.AMT_SVC_LINE_CHARGE
 
-?? SVCLINECHARGEAMT
-only found in STG_B_ENC_PROF_INFO_DTL_SCRUB_* tables
+see  SVCLINECHARGEAMT only found in STG_B_ENC_PROF_INFO_DTL_SCRUB_* tables
 
 Otherwise same as Amt_Billed - 2.001.21
 */
