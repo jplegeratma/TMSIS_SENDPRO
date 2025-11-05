@@ -2,11 +2,11 @@
 
 -- DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
-CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837 AS
+-- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837 AS
 
--- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
+TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
---INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
+INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
 
 SELECT DISTINCT
     RUN_DATE,
@@ -378,13 +378,27 @@ Final - Target
         --OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
+
 -- from Target
-         WHEN (billing_ProviderInternalId IS NULL OR billing_ProviderInternalId IN ('#','+','-')) AND (dtl_billing_ProviderInternalId IS NULL OR dtl_billing_ProviderInternalId IN ('#','+','-')) THEN 'NULL'
-		 WHEN ( 
-               (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = billing_ProviderInternalId) )
-           AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_billing_ProviderInternalId) )
+--         WHEN (billing_ProviderInternalId IS NULL OR billing_ProviderInternalId IN ('#','+','-')) AND (dtl_billing_ProviderInternalId IS NULL OR dtl_billing_ProviderInternalId IN ('#','+','-')) THEN 'NULL'
+--		 WHEN ( 
+--               (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = billing_ProviderInternalId) )
+--           AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_billing_ProviderInternalId) )
+--         )
+--         THEN 'INVALID'
+
+-- Billing Internal Provider Address Location
+
+		 WHEN 
+         (
+             (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
+         where BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
+
+         AND (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
+         where DTL_BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
+
          ELSE 'VALID' 
     END AS BillingProviderInternalId1X,
 
@@ -930,14 +944,32 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
 -- From Target Servicing Provider Internal ID
          WHEN (Referring_ProviderInternalId IS NULL) AND (dtl_referring_ProviderInternalId IS NULL)THEN 'NULL'
+
+--		 WHEN 
+--         (
+--              (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = Referring_ProviderInternalId)) 
+--          AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_referring_ProviderInternalId))
+--         )
+--         THEN 'INVALID'
+
+-- Servicing Internal Provider Address Location
+
 		 WHEN 
          (
-              (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = Referring_ProviderInternalId)) 
-          AND (NOT EXISTS (SELECT ENC_PROV_ID from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ENC_PROV_ID NOT IN ('#','+','-') AND ENC_PROV_ID = dtl_referring_ProviderInternalId))
+             (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
+         where SERVICING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
+
+         AND (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
+         where DTL_SERVICING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
+
          ELSE 'VALID' 
          END AS ReferringProviderInternalId1X,
+
+
+
+
 
 /*
 2.001.18	Measure	Medium	% missing: REFERRING-PROV-NPI-NUM	>= 90% present	
