@@ -31,7 +31,7 @@ FROM (
                 TOSERVICEDATE1X AS To_Service_Date,
                 PRESCRIPTIONFILLDATE1X AS Prescription_Fill_Date,
                 BILLINGPROVIDERNPI1X AS Billing_Provider_NPI,
-                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_ID,
+                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_Address_Location,
                 CLAIMBILLEDAMOUNT1X AS Billed_Amount,
                 REVENUECODE1X AS Revenue_Code,
                 AMTPAIDMCAREHDR1X AS Amount_Paid_Medicare_HDR,
@@ -53,7 +53,7 @@ FROM (
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
                 REFERRINGPROVIDERINTERNALID1X AS Referring_Provider_Internal_ID,
                 REFERRINGPROVIDERNPI1X AS Referring_Provider_NPI,
-                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_ID,
+                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_Address_Location,
                 CLAIMALLOWABLEAMOUNT1X AS Allowed_Amount
             FROM MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
         )
@@ -66,7 +66,7 @@ FROM (
                 To_Service_Date,
                 Prescription_Fill_Date,
                 Billing_Provider_NPI,
-                Billing_Provider_Internal_ID,
+                Billing_Provider_Internal_Address_Location,
                 Billed_Amount,
                 Revenue_Code,
                 Amount_Paid_Medicare_HDR,
@@ -88,7 +88,7 @@ FROM (
                 Rebate_Eligible_Indicator,
                 Referring_Provider_Internal_ID,
                 Referring_Provider_NPI,
-                Servicing_Provider_Internal_ID,
+                Servicing_Provider_Internal_Address_Location,
                 Allowed_Amount
             )
         ) AS INF_B_SENDPRO_TMSIS_837_UNPIV
@@ -234,7 +234,7 @@ SELECT
                 TOSERVICEDATE1X AS To_Service_Date,
                 PRESCRIPTIONFILLDATE1X AS Prescription_Fill_Date,
                 BILLINGPROVIDERNPI1X AS Billing_Provider_NPI,
-                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_ID,
+                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_Address_Location,
                 CLAIMBILLEDAMOUNT1X AS Billed_Amount,
                 REVENUECODE1X AS Revenue_Code,
                 AMTPAIDMCAREHDR1X AS Amount_Paid_Medicare_HDR,
@@ -256,7 +256,7 @@ SELECT
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
                 REFERRINGPROVIDERINTERNALID1X AS Referring_Provider_Internal_ID,
                 REFERRINGPROVIDERNPI1X AS Referring_Provider_NPI,
-                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_ID,
+                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_Address_Location,
                 CLAIMALLOWABLEAMOUNT1X AS Allowed_Amount,
                 NUM_ICN,
                 NUM_DTL
@@ -271,7 +271,7 @@ SELECT
                 To_Service_Date,
                 Prescription_Fill_Date,
                 Billing_Provider_NPI,
-                Billing_Provider_Internal_ID,
+                Billing_Provider_Internal_Address_Location,
                 Billed_Amount,
                 Revenue_Code,
                 Amount_Paid_Medicare_HDR,
@@ -293,7 +293,7 @@ SELECT
                 Rebate_Eligible_Indicator,
                 Referring_Provider_Internal_ID,
                 Referring_Provider_NPI,
-                Servicing_Provider_Internal_ID,
+                Servicing_Provider_Internal_Address_Location,
                 Allowed_Amount
             )
 ) AS UNPIV_DTL
