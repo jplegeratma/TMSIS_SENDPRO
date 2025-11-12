@@ -4,7 +4,7 @@
 
 -- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837 AS
 
--- TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
+TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837;
 
 INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837
 
@@ -55,7 +55,7 @@ AND (MX.DISCHARGE_DT IS NOT NULL and discharge_dt >= admit_dt) THEN 1 else 0 end
 --  Ex
     CASE WHEN Claim_Type NOT IN ('I') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN PatientStatusCode IS NULL OR PatientStatusCode IN ('#','+','-') THEN 'NULL'
@@ -74,7 +74,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('I','O','M','L','H','P','Q') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN (FACT_MEM_SEQ IS NULL OR FACT_MEM_SEQ IN (-1,-4,-5)) AND (DTL_FACT_MEM_SEQ IS NULL OR DTL_FACT_MEM_SEQ IN (-1,-4,-5)) THEN 'NULL'
@@ -285,7 +285,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('I','O','M','L','H') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_FROM_DT IS NULL AND DTL_DOS_FROM_DT IS NULL THEN 'NULL'
@@ -303,7 +303,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('I','O','M','L','H') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_TO_DT IS NULL AND DTL_DOS_TO_DT IS NULL THEN 'NULL'
@@ -324,7 +324,7 @@ Suggest either using ADJUDICATION_DT or DOS_FROM_DT?
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN DOS_FROM_DT IS NULL THEN 'NULL'
@@ -341,7 +341,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -376,7 +376,7 @@ Final - Target
 
     CASE WHEN Claim_Type NOT IN ('I','O','M','H','P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -424,7 +424,7 @@ If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-f
 
     CASE WHEN Claim_Type NOT IN ('I','L','P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -453,7 +453,7 @@ from Target
 
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN DTL_REV_SEQ IS NULL OR DTL_REV_SEQ IN (-1,-4,-5) THEN 'NULL'
@@ -471,7 +471,7 @@ This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Cl
 
     CASE WHEN Claim_Type NOT IN ('I','L')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0 THEN 'INVALID' 
@@ -489,7 +489,7 @@ This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Cl
 
     CASE WHEN Claim_Type NOT IN ('I','L')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN DTL_AMT_PAID_MCARE IS NULL OR DTL_AMT_PAID_MCARE <= 0 THEN 'INVALID' 
@@ -516,7 +516,7 @@ LT Crossover
 
     CASE WHEN Claim_Type NOT IN ('L')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0 THEN 'INVALID' 
@@ -532,7 +532,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Non-void, Crossover
 
     CASE WHEN Claim_Type NOT IN ('I','L','O','M','H')
         OR CDE_CLM_DISPOSITION IN ('V')
-        OR IND_CROSSOVER = 'Y'
+        OR IND_CROSSOVER = 'N'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN (  (AMT_PAID_MCARE IS NULL OR AMT_PAID_MCARE <= 0) 
@@ -550,7 +550,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        OR IND_CROSSOVER = 'N'
+        OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -582,7 +582,7 @@ Use this SEQ to match the ENC_PRV_SEQ in the SPRO_B_ENC_PROVIDER_HIST table and 
 
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- like Target
@@ -601,7 +601,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
 
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- like Target
@@ -626,7 +626,7 @@ from final - target
 
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -650,7 +650,7 @@ from Final - Target
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -668,7 +668,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
 
     CASE WHEN Claim_Type NOT IN ('I','L','O','M','H')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
@@ -715,7 +715,7 @@ If multiple values, pick the first one"
 
     CASE WHEN Claim_Type NOT IN ('O','M','H')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target for Serving Provider Type
@@ -742,7 +742,7 @@ IND_GENERIC
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
         WHEN IND_GENERIC IS NULL OR IND_GENERIC IN ('#','+','-') OR IND_GENERIC NOT IN ('Y','N','B','G')  THEN 'INVALID'
@@ -772,7 +772,7 @@ END AS CompoundNDC1X,
 
     CASE WHEN Claim_Type NOT IN ('Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -806,7 +806,7 @@ SPRO_B_ENC_CLAIM_INST_LEG_HIST.NUM_DAYS_COVD
 
     CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
     WHEN NUM_DAYS_COVD IS NULL OR NUM_DAYS_COVD < 0 THEN 'INVALID'
@@ -821,7 +821,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- From Target
@@ -842,7 +842,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- From Target
@@ -922,7 +922,7 @@ Using SPRO_B_ENC_CLAIM_PHRM_LEG_HIST.AMT_PATIENT_FORM_REBATE
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -939,7 +939,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('O','M','H')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -980,7 +980,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('O','M','H')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
@@ -1010,7 +1010,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
     CASE WHEN Claim_Type NOT IN ('O','M','H')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- From Target Servicing Provider Internal ID
@@ -1032,7 +1032,7 @@ This measure should show % of IP, LT, OT, and RX claims missing Total Allowed Am
 
     CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
-        --OR IND_CROSSOVER = 'N'
+        --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
