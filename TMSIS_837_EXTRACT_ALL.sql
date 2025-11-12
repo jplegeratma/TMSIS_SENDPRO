@@ -1036,7 +1036,7 @@ This measure should show % of IP, LT, OT, and RX claims missing Total Allowed Am
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 -- from Target
-    WHEN AMT_ALLOWED NOT IN (-1,-4,-5) AND DTL_AMT_ALLOWED NOT IN (-1,-4,-5) THEN 'INVALID'
+    WHEN AMT_ALLOWED IN (-1,-4,-5) AND DTL_AMT_ALLOWED IN (-1,-4,-5) THEN 'INVALID'
     WHEN AMT_ALLOWED <= 0 AND DTL_AMT_ALLOWED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimAllowableAmount1X,
