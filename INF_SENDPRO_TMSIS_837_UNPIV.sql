@@ -5,19 +5,20 @@ DROP VIEW INF_SENDPRO_TMSIS_837_UNPIV;
 
 CREATE VIEW INF_SENDPRO_TMSIS_837_UNPIV AS
 
-SELECT DISTINCT RUN_DATE, A.CDE_ENTITY_MODEL, A.CDE_ENC_MCO, A.CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, A.MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT,
+SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, A.CDE_ENTITY_MODEL, A.CDE_ENC_MCO, A.CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, A.MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT,
 --s.FILE_NAME, s.PROCESS_START_TM, 
 L.BENCHMARK_THRESHOLD
 FROM (
 
-SELECT DISTINCT RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT
+SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT
 FROM (
-    SELECT RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE, COUNT(TYPE) AS REC_CNT
+    SELECT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE, COUNT(TYPE) AS REC_CNT
     FROM (
-        SELECT RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
+        SELECT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
         FROM (
             SELECT
                 RUN_DATE,
+                CLAIM_LEG_TYPE,
                 CDE_ENTITY_MODEL, 
                 CDE_ENC_MCO, 
                 CDE_ENC_ACO, 
@@ -93,9 +94,9 @@ FROM (
             )
         ) AS INF_B_SENDPRO_TMSIS_837_UNPIV
     )
-    GROUP BY RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
+    GROUP BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
 )
-ORDER BY RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
+ORDER BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE
 
 ) AS A
 --LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_STATISTIC S ON A.MD_BATCH_SEQ = s.MD_BATCH_SEQ_SPRO
@@ -109,7 +110,8 @@ CREATE VIEW INF_SENDPRO_TMSIS_837_UNPIV_DETAIL
 AS
 
 SELECT DISTINCT 
-               a.RUN_DATE, 
+               a.RUN_DATE,
+               a.CLAIM_LEG_TYPE, 
                a.CDE_ENTITY_MODEL, 
                a.CDE_ENC_MCO, 
                a.CDE_ENC_ACO, 
@@ -129,7 +131,8 @@ FROM (
 
 -- limit rank to 10 lines
 SELECT DISTINCT 
-               RUN_DATE, 
+               RUN_DATE,
+               CLAIM_LEG_TYPE, 
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
                CDE_ENC_ACO, 
@@ -147,6 +150,7 @@ FROM (
 -- rank
   SELECT 
                RUN_DATE, 
+               CLAIM_LEG_TYPE,
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
                CDE_ENC_ACO, 
@@ -160,6 +164,7 @@ FROM (
                NUM_DTL,
                                           RANK ()
                                             OVER (PARTITION BY RUN_DATE,
+                                                               CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
                                                                CDE_ENC_ACO,
@@ -170,6 +175,7 @@ FROM (
                                                                MEASURE
                                                   ORDER BY
                                                                RUN_DATE,
+                                                               CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
                                                                CDE_ENC_ACO,
@@ -188,7 +194,8 @@ FROM (
 
 SELECT 
 
-               RUN_DATE, 
+               RUN_DATE,
+               CLAIM_LEG_TYPE, 
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
                CDE_ENC_ACO, 
@@ -205,7 +212,8 @@ SELECT
 -- core unpiv
 
         SELECT 
-               RUN_DATE, 
+               RUN_DATE,
+               CLAIM_LEG_TYPE, 
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
                CDE_ENC_ACO, 
@@ -221,6 +229,7 @@ SELECT
         FROM (
             SELECT
                 RUN_DATE,
+                CLAIM_LEG_TYPE,
                 CDE_ENTITY_MODEL, 
                 CDE_ENC_MCO, 
                 CDE_ENC_ACO, 
@@ -297,7 +306,7 @@ SELECT
                 Allowed_Amount
             )
 ) AS UNPIV_DTL
-ORDER BY RUN_DATE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MEASURE, TYPE
+ORDER BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MEASURE, TYPE
 
 -- only first claim line
 )
@@ -310,6 +319,7 @@ WHERE rnk <= 10
 
 ORDER BY 
                                                                RUN_DATE,
+                                                               CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
                                                                CDE_ENC_ACO,
