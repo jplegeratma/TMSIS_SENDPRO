@@ -339,11 +339,14 @@ RX
 This measure should show the % of Medicaid and S-CHIP Encounter: Original and Adjustment, Paid Claims, claim headers with invalid formatting of Billing Provider NPI within.	
 */
 
+
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
         --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
+/* 11/19/2025 - debugging
+
 -- from Target
          WHEN 
          (
@@ -357,8 +360,10 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
           AND (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = dtl_billing_ProviderNPI)) 
          )
          THEN 'INVALID'
+*/
          ELSE 'VALID' 
     END AS BillingProviderNPI1X,
+
 
 /*
 2.001.06	Measure	High	% missing: BILLING-PROV-NUM 	<= 2% missing	
@@ -390,6 +395,7 @@ Final - Target
 
 -- Billing Internal Provider Address Location
 
+/* -- 11/19/2025 - debugging
 		 WHEN 
          (
              (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
@@ -399,6 +405,7 @@ Final - Target
          where DTL_BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
+ */
 
          ELSE 'VALID' 
     END AS BillingProviderInternalId1X,
@@ -671,6 +678,8 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
         --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
+
+/* 11/19/2025 - debugging
 -- from Target
 		 WHEN 
          (
@@ -683,6 +692,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
          where DTL_BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND tax.CDE_ENC_TAXONOMY IS NOT NULL AND tax.CDE_ENC_TAXONOMY NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
+*/
          ELSE 'VALID' 
          END AS BillingProviderTaxonomy1X,
 
