@@ -31,6 +31,9 @@ SELECT DISTINCT
 IP	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims- claims missing Discharge Date and Patient Status is NOT 'still a patient' 	IN SENDPRO TARGET DASHBOARD
 
+"Patient status should not  = 30 (still a patient) or be missing
+MA use the national standard Patient status. No cross walk needed. "	A code indicating the Patients status as of the ENDING-DATE-OF-SERVICE. Values used are from UB-04. This is also referred to as DISCHARGE-STATUS.
+
 from SCO
 case when Claim_Type IN('I','O') AND cde_patient_status not in ('+', '-', ' ') then 1 else 0 end as CDE_PATIENT_STATUS1,
 case when (Claim_Type='I' AND substr(cde_type_of_bill_enc,1,2) <> '21' and SUBSTR(DSC_PATIENT_STATUS,1,2) NOT BETWEEN '30' AND '39')
@@ -126,37 +129,40 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 claim header record segments missing ADJUDICATION-DATE	
 Record segment just references the line, header or other segment table used. So this just means claim headers.
 
-??
-ADJUDICATION-DATE is only on RX header
-WH_FROM_DT is the date the Warehouse ETL process is started, after plans have processed, submitted, Deloitte has processed XML and sent to DW.
-Suggest using Adjudication date for PHRM and DOS_FROM_DT for others? 
-
-from Final
-54	MPT_SENDPRO_Validate_Adjudication_Date	NCPDP:
-    Step 1: Lookup SENDPRO.RAW_SPRO_NCPDP_CLAIM OrigClm based on SENDPRO.RAW_SPRO_NCPDP_CLAIM newClaim. TransIDCrossRef = OrigClm. TransID and Obtain AdjudicationDate
-    Step 2: If newClaim.AdjudicationDate > OrigClm. AdjudicationDate Then 1 else 0 end
-
-from RAW
-left join MHDWQA.SENDPRO.RAW_SPRO_837I_CLAIM_SVCLN_ADJUDICATION_DTL as a
-on  h."FileName" = a."FileName"
--- and h."SubmitterID"        = a."SubmitterID"
-and h."PatientControlNum"  = a."PatientControlNum"
-and d."NumDtl"             = a."NumDtl"
+we actually use the WH_FROM_DT
 
 */
 
-
-
+    CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','D','P','Q') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','A')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN (WH_FROM_DT IS NULL) THEN 'NULL'
+        WHEN (WH_FROM_DT = '1900-01-01') THEN 'INVALID'
+        ELSE 'VALID'
+    END AS AdjudicationDateHdrX,
 
 /*
-2.001.37	Measure	Critical	% of claim line record segments missing ADJUDICATION-DATE	0%	"IP LT OT RX"	
+2.001.37	Measure	Critical	% of claim line record segments missing ADJUDICATION-DATE	0%	
+"IP LT OT RX"	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Non-Crossover, Paid Claims, claim line record segments missing ADJUDICATION-DATE	"JPR - We should dicuss.  I was thinking keep at month level. Also, there are too many metrics so we need a rollup dashboard that can be drill in to the measure by priority.  See Moch Up Sheet.
 Record segment just references the line, header or other segment table used. So this just means claim headers."
 
-?? WH_FROM_DT 
+we actually use the WH_FROM_DT
+added DTL_WH_FROM_DT
 
 */
 
+    CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','D','P','Q') 
+        OR CDE_CLM_DISPOSITION NOT IN ('O','A')
+        OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+        WHEN (DTL_WH_FROM_DT IS NULL AND DTL_WH_FROM_DT IS NULL) THEN 'NULL'
+        WHEN (DTL_WH_FROM_DT = '1900-01-01' AND DTL_WH_FROM_DT = '1900-01-01') THEN 'INVALID'
+        ELSE 'VALID'
+    END AS AdjudicationDateDtlX,   
 
 /*
 2.001.38	Measure	Critical	 % of claim headers that have no corresponding claim lines	0%	
@@ -345,7 +351,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
         --OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
-/* 11/19/2025 - debugging
+-- 11/19/2025 - debugging
 
 -- from Target
          WHEN 
@@ -360,7 +366,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Ad
           AND (NOT EXISTS (SELECT ID_NPI from mhdwqa.SENDPRO.spro_b_enc_provider_hist where ID_NPI NOT IN ('#','+','-') AND ID_NPI = dtl_billing_ProviderNPI)) 
          )
          THEN 'INVALID'
-*/
+--
          ELSE 'VALID' 
     END AS BillingProviderNPI1X,
 
@@ -395,7 +401,7 @@ Final - Target
 
 -- Billing Internal Provider Address Location
 
-/* -- 11/19/2025 - debugging
+-- 11/19/2025 - debugging
 		 WHEN 
          (
              (NOT EXISTS (SELECT prv.ID_PROVIDER_LOCATION from mhdwqa.SENDPRO.spro_b_enc_provider_hist as prv
@@ -405,7 +411,7 @@ Final - Target
          where DTL_BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND prv.ID_PROVIDER_LOCATION IS NOT NULL AND prv.ID_PROVIDER_LOCATION NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
- */
+ --
 
          ELSE 'VALID' 
     END AS BillingProviderInternalId1X,
@@ -427,6 +433,7 @@ If TYPE-OF-CLAIM = 3, C, W (encounter record) this field should either be zero-f
 ?? TYPE-OF-CLAIM
 ?? If we assume that this is encounter record then the Target logic should be ok - except for header to detail check
 
+This is the same as 05 aqnd 15
 */
 
     CASE WHEN Claim_Type NOT IN ('I','L','P','Q')
@@ -456,6 +463,8 @@ from Target
 24	MPT_SENDPRO_ServiceLineRevenueCode_Valid	If valid based on the lookup against the CDE_CHAR from NW_SUP_CODE_REF where CDE_GROUP='CDE_REVENUE'  then 1 else 0
 
 ?? This is at the claim header level but uses detail revenue codes... so if any detail line has a valid code then the header is valid? And needs to be aggregated.
+
+Can't filter for only Medicaid at this time.
 */
 
     CASE WHEN Claim_Type NOT IN ('I')
@@ -467,13 +476,14 @@ from Target
 --    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
     WHEN NOT EXISTS (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '100' AND '219') THEN 'INVALID'
     ELSE 'VALID'
-    END AS RevenueCode1X,
+    END AS AccomRevenueCode1X,
 
 /*
 2.001.23	Measure	High	% of claim headers with Total Medicaid Paid Amount = $0 or missing	<= 10% missing	
 IP	
 This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Claims, claim headers with Total Medicaid Paid Amount of $0 or are missing. 	
 
+Can't filter for only S-CHIP at this time.
 */
 
     CASE WHEN Claim_Type NOT IN ('I','L')
@@ -573,9 +583,19 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 IP	
 This measure should show the AVE # of ancillary codes on Medicaid and S-CHIP Encounter: Original and Adjustment, Paid Claims with ancillary codes	
 
-??What are the ancillary codes?
+Ancillary codes are rev codes 220-998
 */
 
+    CASE WHEN Claim_Type NOT IN ('I')
+        OR CDE_CLM_DISPOSITION NOT IN ('O','A')
+        --OR IND_CROSSOVER = 'Y'
+        OR CDE_CLM_STATUS != 'P'
+        THEN 'NOT APP'
+    WHEN DTL_REV_SEQ IS NULL OR DTL_REV_SEQ IN (-1,-4,-5) THEN 'NULL'
+--    WHEN DTL_REV_SEQ NOT IN (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '220' AND '998') THEN 'INVALID'
+    WHEN NOT EXISTS (SELECT REV_SEQ FROM MHDWQA.NW.NW_B_REVENUE_CODE WHERE REV_SEQ = DTL_REV_SEQ AND CDE_REVENUE BETWEEN '220' AND '998') THEN 'INVALID'
+    ELSE 'VALID'
+    END AS AncillaryCode1X,
 
 /*
 2.001.02	Measure	Medium	 % missing: ADMITTING-PROV-NUM	<= 2% missing	
@@ -651,9 +671,8 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 from Final - Target
 55	MPT_SENDPRO_Validate_BilledAmount	If BILLED-AMT is null or less than zero then 0 else 1
 
-?? This is similar to 2.001.21 but for RX only
+Using 2.001.21 where there is no differnece between AMT_BILLED and TOTAL AMT BILLED
 
-*/
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
@@ -665,6 +684,7 @@ from Final - Target
     WHEN AMT_BILLED <= 0 AND DTL_AMT_BILLED <= 0 THEN 'INVALID'
     ELSE 'VALID'
 END AS ClaimBilledAmountRx1X,
+*/
     
 /*
 2.001.07	Measure	Medium	 % missing: BILLING-PROV-TAXONOMY	<= 2% missing	
@@ -679,7 +699,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
         OR CDE_CLM_STATUS != 'P'
         THEN 'NOT APP'
 
-/* 11/19/2025 - debugging
+--  11/19/2025 - debugging
 -- from Target
 		 WHEN 
          (
@@ -692,7 +712,7 @@ This measure should show the % of Medicaid and S-CHIP Encounter: Original and Re
          where DTL_BILLING_ENC_PRV_SEQ = prv.ENC_PRV_SEQ AND tax.CDE_ENC_TAXONOMY IS NOT NULL AND tax.CDE_ENC_TAXONOMY NOT IN ('#','+','-')))
          )
          THEN 'INVALID'
-*/
+--
          ELSE 'VALID' 
          END AS BillingProviderTaxonomy1X,
 
@@ -748,6 +768,7 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
 ?? how about standardizing this to 'Y' or 'N'  OR 'B' or 'G'
 IND_GENERIC
+CMS wants Y and N only
 */
 
     CASE WHEN Claim_Type NOT IN ('P','Q')
@@ -802,6 +823,8 @@ This measure should show % of Medicaid and S-CHIP Encounter: Original and Replac
 
 ?? RX has Billing and Prescribing providers - is Dispensing same as Billing?
 If yes, could add RX to 01
+
+-- Using Billing Provider Internal Location from 2.001.06
 */
 
 
@@ -880,9 +903,8 @@ LT	SPRO_B_ENC_INST_INFO_DTL_HIST.AMT_SVC_LINE_CHARGE
 
 see  SVCLINECHARGEAMT only found in STG_B_ENC_PROF_INFO_DTL_SCRUB_* tables
 
-Otherwise same as Amt_Billed - 2.001.21
+Same as Amt_Billed - 2.001.21
 */
-
 
 
 /*
@@ -890,41 +912,6 @@ Otherwise same as Amt_Billed - 2.001.21
 RX	
 This measure should show % of Medicaid and S-CHIP Encounter: Original and Replacement, Paid Claims missing REBATE-ELIGIBLE-INDICATOR	
 
-?? Where REBATE is found:
-
-MHDWQA	NW	NW_B_ENC_ATTRIBUTE	IND_ENC_REBATE
-MHDWQA	NW	NW_B_ENC_DENIED_CLAIM	REBATE_INDICATOR
-
-MHDWQA	NW	NW_ENC_ATTRIBUTE	IND_ENC_REBATE
-MHDWQA	NW	NW_ENC_DENIED_CLAIM	REBATE_INDICATOR
-
-MHDWQA	NW	ODS_ENCOUNTER	REBATE_INDICATOR
-MHDWQA	NW	ODS_ENCOUNTER_VW	REBATE_INDICATOR
-
-MHDWQA	SENDPRO	RAW_SPRO_NCPDP_CLAIM	PatientFormRebateAmt
-MHDWQA	SENDPRO	RAW_SPRO_NCPDP_COMPOUND_DTL	CompndRebateAmt
-
-MHDWQA	SENDPRO	SPRO_B_ENC_CLAIM_PHRM_LEG_HIST	AMT_PATIENT_FORM_REBATE
-MHDWQA	SENDPRO	SPRO_B_ENC_PHRM_DRUG_ATTRIBUTE	AMT_COMPND_REBATE
-
-MHDWQA	SENDPRO	STG_ENC_PHRM_DRUG_ATTR_STAGE	AMT_COMPND_REBATE
-MHDWQA	SENDPRO	STG_ENC_PHRM_LEG_INS	AMT_PATIENT_FORM_REBATE
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB	ORIG_PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB	PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_1	ORIG_PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_1	PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_2	ORIG_PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_2	PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_3	ORIG_PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_SCRUB_3	PATIENT_FORM_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_CLAIM_STAGE	AMT_PATIENT_FORM_REBATE
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR	AMT_COMPND_REBATE
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_DTL	COMPND_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_DTL	ORIG_COMPND_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_HDR	COMPND_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DRUG_ATTR_HDR	ORIG_COMPND_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DTL_SCRUB	COMPND_REBATE_AMT
-MHDWQA	SENDPRO	STG_SPRO_PHRM_DTL_SCRUB_1	COMPND_REBATE_AMT
 
 Using SPRO_B_ENC_CLAIM_PHRM_LEG_HIST.AMT_PATIENT_FORM_REBATE
 
@@ -1067,12 +1054,12 @@ CASE WHEN Claim_Type NOT IN  ('P', 'Q') THEN 1 ELSE 0 END AS NON_PHARM,
 
 FROM MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT;
 
- /*
+/* 
 --(
 
 -- DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT;
 
---CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT AS
+-- CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT AS
 
 TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_EXTRACT;
 
@@ -1132,7 +1119,6 @@ select DISTINCT
     NULL                           AS AMT_DISP_FEE,
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
-    NULL                           AS QTY_DISPD,
     NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
 
@@ -1174,6 +1160,7 @@ select DISTINCT
     dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
     dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
     NULL                           AS DTL_DISCHARGE_DT, --DATE(dtl.DISCHARGE_DT)
+    dtl.WH_FROM_DT                 AS DTL_WH_FROM_DT,
 
     dtl.REV_SEQ                    AS DTL_REV_SEQ,
 
@@ -1263,7 +1250,6 @@ select DISTINCT
     NULL                           AS AMT_DISP_FEE,
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
-    NULL                           AS QTY_DISPD,
     NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
   
@@ -1305,6 +1291,7 @@ select DISTINCT
     dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
     dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
     NULL                           AS DTL_DISCHARGE_DT,
+    dtl.WH_FROM_DT                 AS DTL_WH_FROM_DT,
 
     NULL                           AS DTL_REV_SEQ,
     
@@ -1392,7 +1379,6 @@ select DISTINCT
     NULL                           AS AMT_DISP_FEE,
     NULL                           AS NUM_SCRIPT_SERV_REF,
     NULL                           AS CDE_PRESC_ORIG,
-    NULL                           AS QTY_DISPD,
     NULL                           AS AMT_PATIENT_FORM_REBATE,
     NULL                           AS DTL_CDE_NDC,
 
@@ -1434,6 +1420,7 @@ select DISTINCT
     dtl.MEM_SEQ                    AS DTL_FACT_MEM_SEQ,
     dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,
     NULL                           AS DTL_DISCHARGE_DT,
+    dtl.WH_FROM_DT                 AS DTL_WH_FROM_DT,
 
     NULL AS DTL_REV_SEQ,
     
@@ -1519,7 +1506,6 @@ select DISTINCT
     phrm.AMT_DISP_FEE,
     phrm.NUM_SCRIPT_SERV_REF,
     phrm.CDE_PRESC_ORIG,
-    phrm.QTY_DISPD,
     phrm.AMT_PATIENT_FORM_REBATE,
     dtl.CDE_NDC                    AS DTL_CDE_NDC,
 
@@ -1559,8 +1545,9 @@ select DISTINCT
     NULL                           AS DTL_DOS_FROM_DT,
     NULL                           AS DTL_DOS_TO_DT,
     NULL                           AS DTL_FACT_MEM_SEQ,
-    dtl.QTY_UNITS_BILLED           AS DTL_QTY_UNITS_BILLED,   
+    NULL                           AS DTL_QTY_UNITS_BILLED,   
     NULL                           AS DTL_DISCHARGE_DT,
+    dtl.WH_FROM_DT                 AS DTL_WH_FROM_DT,
 
     NULL                           AS DTL_REV_SEQ,
 
