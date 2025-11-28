@@ -7,7 +7,7 @@ CREATE VIEW INF_SENDPRO_TMSIS_837_HDR_UNPIV AS
 
 SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, A.CDE_ENTITY_MODEL, A.CDE_ENC_MCO, A.CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, A.MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT,
 --s.FILE_NAME, s.PROCESS_START_TM, 
-L.BENCHMARK_THRESHOLD
+L.BENCHMARK_THRESHOLD, L.PRIORITY
 FROM (
 
 SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT
@@ -27,7 +27,7 @@ FROM (
                 CDE_CLM_STATUS,
                 MD_BATCH_SEQ,
                 PATIENTSTATUSCODE1X AS Patient_Status_Code,
-                MEMBERID1X AS Member_ID,
+                MEMBERID1X AS MSIS_Identification_Number,
                 ADJUDICATIONDATEHDRX AS Adjudication_Date_Header,
                 ADJUDICATIONDATEDTLX AS Adjudication_Date_Detail,
                 PAIDHDRSNOLINES1X AS Paid_Hdrs_No_Lines,
@@ -53,7 +53,7 @@ FROM (
                 BILLINGPROVIDERTYPE1X AS Billing_Provider_Type,
                 BRANDGENERICIND1X AS Brand_Generic_Ind,
                 COMPOUNDDRUGIND1X AS Compound_Drug_Ind,
-                MEDICAIDCOVINPATIENTDAYS1X Medicaid_Coverage_Inpatient_Days,
+                MEDICAIDCOVINPATIENTDAYS1X AS Medicaid_Covered_Inpatient_Days,
                 PRESCRIBINGPROVIDERINTERNALID1X AS Prescribing_Provider_Internal_ID,
                 PRESCRIBINGPROVIDERNPI1X AS Prescribing_Provider_NPI,
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
@@ -67,7 +67,7 @@ FROM (
             TYPE
             FOR MEASURE IN (
                 Patient_Status_Code,
-                Member_ID,
+                MSIS_Identification_Number,
                 Adjudication_Date_Header,
                 Adjudication_Date_Detail,
                 Paid_Hdrs_No_Lines,
@@ -93,7 +93,7 @@ FROM (
                 Billing_Provider_Type,
                 Brand_Generic_Ind,
                 Compound_Drug_Ind,
-                Medicaid_Coverage_Inpatient_Days,
+                Medicaid_Covered_Inpatient_Days,
                 Prescribing_Provider_Internal_ID,
                 Prescribing_Provider_NPI,
                 Rebate_Eligible_Indicator,
@@ -223,7 +223,7 @@ FROM (
                 CDE_CLM_STATUS,
                 MD_BATCH_SEQ,
                 PATIENTSTATUSCODE1X AS Patient_Status_Code,
-                MEMBERID1X AS Member_ID,
+                MEMBERID1X AS MSIS_Identification_Number,
                 ADJUDICATIONDATEHDRX AS Adjudication_Date_Header,
                 ADJUDICATIONDATEDTLX AS Adjudication_Date_Detail,
                 PAIDHDRSNOLINES1X AS Paid_Hdrs_No_Lines,
@@ -249,7 +249,7 @@ FROM (
                 BILLINGPROVIDERTYPE1X AS Billing_Provider_Type,
                 BRANDGENERICIND1X AS Brand_Generic_Ind,
                 COMPOUNDDRUGIND1X AS Compound_Drug_Ind,
-                MEDICAIDCOVINPATIENTDAYS1X Medicaid_Coverage_Inpatient_Days,
+                MEDICAIDCOVINPATIENTDAYS1X AS Medicaid_Covered_Inpatient_Days,
                 PRESCRIBINGPROVIDERINTERNALID1X AS Prescribing_Provider_Internal_ID,
                 PRESCRIBINGPROVIDERNPI1X AS Prescribing_Provider_NPI,
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
@@ -264,7 +264,7 @@ FROM (
             TYPE
             FOR MEASURE IN (
                 Patient_Status_Code,
-                Member_ID,
+                MSIS_Identification_Number,
                 Adjudication_Date_Header,
                 Adjudication_Date_Detail,
                 Paid_Hdrs_No_Lines,
@@ -290,7 +290,7 @@ FROM (
                 Billing_Provider_Type,
                 Brand_Generic_Ind,
                 Compound_Drug_Ind,
-                Medicaid_Coverage_Inpatient_Days,
+                Medicaid_Covered_Inpatient_Days,
                 Prescribing_Provider_Internal_ID,
                 Prescribing_Provider_NPI,
                 Rebate_Eligible_Indicator,
