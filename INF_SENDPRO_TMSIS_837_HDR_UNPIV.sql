@@ -33,11 +33,11 @@ FROM (
                 PAIDHDRSNOLINES1X AS Paid_Hdrs_No_Lines,
                 DENIEDHDRSNOLINES1X AS Denied_Hdrs_No_Lines,
                 PAIDHDRSNONONDENIEDLINES1X AS Paid_Hdrs_No_Non_Denied_Lines,
-                FROMSERVICEDATE1X AS Statement_Date,
-                TOSERVICEDATE1X AS To_Service_Date,
+                FROMSERVICEDATE1X AS Beginning_Date_of_Service,
+                TOSERVICEDATE1X AS  Ending_Date_of_Service,
                 PRESCRIPTIONFILLDATE1X AS Prescription_Fill_Date,
                 BILLINGPROVIDERNPI1X AS Billing_Provider_NPI,
-                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_Address_Location,
+                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_PIDSL,
                 CLAIMBILLEDAMOUNT1X AS Billed_Amount,
                 ACCOMREVENUECODE1X AS Accomodation_Revenue_Code,
                 AMTPAIDMCARESCHIP1X AS Amount_Paid_Medicare_SChip,
@@ -59,7 +59,7 @@ FROM (
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
                 REFERRINGPROVIDERINTERNALID1X AS Referring_Provider_Internal_ID,
                 REFERRINGPROVIDERNPI1X AS Referring_Provider_NPI,
-                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_Address_Location,
+                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_PIDSL,
                 CLAIMALLOWABLEAMOUNT1X AS Allowed_Amount
             FROM MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR
         )
@@ -73,11 +73,11 @@ FROM (
                 Paid_Hdrs_No_Lines,
                 Denied_Hdrs_No_Lines,
                 Paid_Hdrs_No_Non_Denied_Lines,
-                Statement_Date,
-                To_Service_Date,
+                Beginning_Date_of_Service,
+                Ending_Date_of_Service,
                 Prescription_Fill_Date,
                 Billing_Provider_NPI,
-                Billing_Provider_Internal_Address_Location,
+                Billing_Provider_PIDSL,
                 Billed_Amount,
                 Accomodation_Revenue_Code,
                 Amount_Paid_Medicare_SChip,
@@ -99,7 +99,7 @@ FROM (
                 Rebate_Eligible_Indicator,
                 Referring_Provider_Internal_ID,
                 Referring_Provider_NPI,
-                Servicing_Provider_Internal_Address_Location,
+                Servicing_Provider_PIDSL,
                 Allowed_Amount
             )
         ) AS INF_B_SENDPRO_TMSIS_837_UNPIV
@@ -229,11 +229,11 @@ FROM (
                 PAIDHDRSNOLINES1X AS Paid_Hdrs_No_Lines,
                 DENIEDHDRSNOLINES1X AS Denied_Hdrs_No_Lines,
                 PAIDHDRSNONONDENIEDLINES1X AS Paid_Hdrs_No_Non_Denied_Lines,
-                FROMSERVICEDATE1X AS Statement_Date,
-                TOSERVICEDATE1X AS To_Service_Date,
+                FROMSERVICEDATE1X AS Beginning_Date_of_Service,
+                TOSERVICEDATE1X AS Ending_Date_of_Service,
                 PRESCRIPTIONFILLDATE1X AS Prescription_Fill_Date,
                 BILLINGPROVIDERNPI1X AS Billing_Provider_NPI,
-                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_Internal_Address_Location,
+                BILLINGPROVIDERINTERNALID1X AS Billing_Provider_PIDSL,
                 CLAIMBILLEDAMOUNT1X AS Billed_Amount,
                 ACCOMREVENUECODE1X AS Accomodation_Revenue_Code,
                 AMTPAIDMCARESCHIP1X AS Amount_Paid_Medicare_SChip,
@@ -255,7 +255,7 @@ FROM (
                 REBATEELIGIBLEIND1X AS Rebate_Eligible_Indicator,
                 REFERRINGPROVIDERINTERNALID1X AS Referring_Provider_Internal_ID,
                 REFERRINGPROVIDERNPI1X AS Referring_Provider_NPI,
-                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_Internal_Address_Location,
+                SERVICINGPROVIDERINTERNALID1X AS Servicing_Provider_PIDSL,
                 CLAIMALLOWABLEAMOUNT1X AS Allowed_Amount,
                 NUM_ICN
             FROM MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR
@@ -270,11 +270,11 @@ FROM (
                 Paid_Hdrs_No_Lines,
                 Denied_Hdrs_No_Lines,
                 Paid_Hdrs_No_Non_Denied_Lines,
-                Statement_Date,
-                To_Service_Date,
+                Beginning_Date_of_Service,
+                Ending_Date_of_Service,
                 Prescription_Fill_Date,
                 Billing_Provider_NPI,
-                Billing_Provider_Internal_Address_Location,
+                Billing_Provider_PIDSL,
                 Billed_Amount,
                 Accomodation_Revenue_Code,
                 Amount_Paid_Medicare_SChip,
@@ -296,7 +296,7 @@ FROM (
                 Rebate_Eligible_Indicator,
                 Referring_Provider_Internal_ID,
                 Referring_Provider_NPI,
-                Servicing_Provider_Internal_Address_Location,
+                Servicing_Provider_PIDSL,
                 Allowed_Amount
             )
 ) AS UNPIV_HDR
