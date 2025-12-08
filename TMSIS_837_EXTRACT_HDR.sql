@@ -214,7 +214,7 @@ DTL Processing
 
 */
 
-    CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','D','P','Q') 
+    CASE WHEN Claim_Type NOT IN ('I','L','O','M','H','D','Q') 
         OR CDE_CLM_DISPOSITION NOT IN ('O','A')
         OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
