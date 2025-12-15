@@ -584,7 +584,7 @@ Cant filter for only S-CHIP at this time.
 This is SCHIP
 */
 
-    CASE WHEN Claim_Type NOT IN ('I','L')
+    CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
         OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
@@ -604,7 +604,7 @@ This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Cl
 This is MEDICAID
 */
 
-    CASE WHEN Claim_Type NOT IN ('I','L')
+    CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
         OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
