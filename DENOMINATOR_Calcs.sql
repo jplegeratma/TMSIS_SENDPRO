@@ -1,7 +1,9 @@
-select *
-from (
 
 
+drop view MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1_sum;
+
+create view MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1_sum
+as
 SELECT
 RUN_DATE,
 CDE_ENC_MCO,
@@ -9,6 +11,7 @@ claim_type,
 cde_clm_status,
 cde_clm_disposition,
 ind_crossover,
+md_batch_seq,
 
 SUM(PATIENTSTATUSCODE1X_NUM) AS SUM_PATIENTSTATUSCODE1X_NUM, 
 SUM(PATIENTSTATUSCODE1X_DEN) AS SUM_PATIENTSTATUSCODE1X_DEN,
@@ -93,9 +96,10 @@ SUM(IP_OA_NX_P) SUM_IP_OA_NX_P ,
 SUM(IP_O_NX_P) SUM_IP_O_NX_P ,
 SUM(IP_OA_P) SUM_IP_OA_P ,
 SUM(LT_O_X_P) SUM_LT_O_X_P ,
-SUM(IPLT_O_NX_P) SUM_IPLT_O_NX_P ,
+--SUM(IPLT_O_NX_P) SUM_IPLT_O_NX_P ,
 SUM(OT_OA_P) SUM_OT_OA_P ,
 SUM(IPLTOT_OA_NX_P) SUM_IPLTOT_OA_NX_P ,
+SUM(IPLTOT_OA_X_P) SUM_IPLTOT_OA_X_P ,
 SUM(IPLTOT_OA_P) SUM_IPLTOT_OA_P ,
 SUM(RX_OA_NX_P) SUM_RX_OA_NX_P ,
 SUM(RX_OA_P) SUM_RX_OA_P ,
@@ -115,6 +119,7 @@ claim_type,
 cde_clm_status,
 cde_clm_disposition,
 ind_crossover,
+md_batch_seq,
 
 CASE WHEN PATIENTSTATUSCODE1X = 'VALID' THEN 1 ELSE 0 END PATIENTSTATUSCODE1X_NUM,
 CASE WHEN PATIENTSTATUSCODE1X IN ('VALID','INVALID','NULL')  THEN 1 ELSE 0 END PATIENTSTATUSCODE1X_DEN,
@@ -233,8 +238,9 @@ IP_OA_NX_P,
 IP_O_NX_P,
 IP_OA_P,
 LT_O_X_P,
-IPLT_O_NX_P,
+--IPLT_O_NX_P,
 OT_OA_P,
+IPLTOT_OA_X_P,
 IPLTOT_OA_NX_P,
 IPLTOT_OA_P,
 RX_OA_NX_P,
@@ -252,23 +258,14 @@ GROUP BY RUN_DATE, CDE_ENC_MCO,
 claim_type,
 cde_clm_status,
 cde_clm_disposition,
-ind_crossover
+ind_crossover,
+md_batch_seq
 ORDER BY RUN_DATE, CDE_ENC_MCO,
 claim_type,
 cde_clm_status,
 cde_clm_disposition,
-ind_crossover
-
-)
-where cde_clm_status = 'P' 
-and cde_clm_disposition in ('O','A')
-
-ORDER BY RUN_DATE, CDE_ENC_MCO,
-claim_type,
-cde_clm_status,
-cde_clm_disposition,
-ind_crossover
-
+ind_crossover,
+md_batch_seq
 ;
 
 ----------------
@@ -293,9 +290,10 @@ SUM(IP_OA_NX_P) SUM_IP_OA_NX_P ,
 SUM(IP_O_NX_P) SUM_IP_O_NX_P ,
 SUM(IP_OA_P) SUM_IP_OA_P ,
 SUM(LT_O_X_P) SUM_LT_O_X_P ,
-SUM(IPLT_O_NX_P) SUM_IPLT_O_NX_P ,
+--SUM(IPLT_O_NX_P) SUM_IPLT_O_NX_P ,
 SUM(OT_OA_P) SUM_OT_OA_P ,
 SUM(IPLTOT_OA_NX_P) SUM_IPLTOT_OA_NX_P ,
+SUM(IPLTOT_OA_X_P) SUM_IPLTOT_OA_X_P ,
 SUM(IPLTOT_OA_P) SUM_IPLTOT_OA_P ,
 SUM(RX_OA_NX_P) SUM_RX_OA_NX_P ,
 SUM(RX_OA_P) SUM_RX_OA_P ,
@@ -323,13 +321,13 @@ select *
 from MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1
 limit 10;
 
-DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1;
+--DROP TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1;
 
-CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1 AS
+--CREATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1 AS
 
---TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1;
+TRUNCATE TABLE MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1;
 
---INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1
+INSERT INTO MHTEAM.DWDQ.INF_B_SENDPRO_TMSIS_837_HDR_wrk1
 SELECT DISTINCT
     RUN_DATE,
     CLAIM_LEG_TYPE,
@@ -907,7 +905,7 @@ Cant filter for only S-CHIP at this time.
 This is SCHIP
 */
 
-    CASE WHEN Claim_Type NOT IN ('I','L')
+    CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
         OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
@@ -927,7 +925,7 @@ This measure should show % of S-CHIP Encounter: Original, Non-Crossover, Paid Cl
 This is MEDICAID
 */
 
-    CASE WHEN Claim_Type NOT IN ('I','L')
+    CASE WHEN Claim_Type NOT IN ('I')
         OR CDE_CLM_DISPOSITION NOT IN ('O')
         OR IND_CROSSOVER = 'Y'
         OR CDE_CLM_STATUS != 'P'
@@ -1499,10 +1497,10 @@ CASE WHEN Claim_Type NOT IN  ('P', 'Q') THEN 1 ELSE 0 END AS NON_PHARM_HDR,
         THEN 1 ELSE 0 END LT_O_X_P,
 
     CASE WHEN Claim_Type IN ('I','L')
-        AND CDE_CLM_DISPOSITION IN ('O')
-        AND IND_CROSSOVER != 'Y'
+        AND CDE_CLM_DISPOSITION IN ('O','A')
+        --OR IND_CROSSOVER != 'Y'
         AND CDE_CLM_STATUS = 'P'
-        THEN 1 ELSE 0 END IPLT_O_NX_P,
+        THEN 1 ELSE 0 END IPLT_OA_P,
 
     CASE WHEN Claim_Type IN ('O','M','D','H')
         AND CDE_CLM_DISPOSITION IN ('O','A')
@@ -1515,6 +1513,12 @@ CASE WHEN Claim_Type NOT IN  ('P', 'Q') THEN 1 ELSE 0 END AS NON_PHARM_HDR,
         AND IND_CROSSOVER != 'Y'
         AND CDE_CLM_STATUS = 'P'
         THEN 1 ELSE 0 END IPLTOT_OA_NX_P,
+
+    CASE WHEN Claim_Type IN ('I','L','O','M','D','H')
+        AND CDE_CLM_DISPOSITION IN ('O','A')
+        AND IND_CROSSOVER = 'Y'
+        AND CDE_CLM_STATUS = 'P'
+        THEN 1 ELSE 0 END IPLTOT_OA_X_P,
 
     CASE WHEN Claim_Type IN ('I','L','O','M','D','H')
         AND CDE_CLM_DISPOSITION IN ('O','A')
