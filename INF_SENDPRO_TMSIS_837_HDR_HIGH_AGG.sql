@@ -280,6 +280,11 @@ GROUP BY MCO
 
 -- Aggregated Dashboard by MCE V2
 
+DROP VIEW INF_SENDPRO_TMSIS_837_AGG_DASHBOARD_V2;
+
+create view MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_AGG_DASHBOARD_V2
+AS
+
 WITH priority_sums AS (
 
     select RUN_DATE, MCO, PRIORITY, PF_SUM, MEAS_COUNT,
@@ -295,7 +300,7 @@ WITH priority_sums AS (
         CASE WHEN PCT_VALID >= CRITERIA THEN 1 ELSE 0 END PASS_FAIL,
         SUM_VALID_REC_CNT, SUM_TMSIS_REC_CNT, SUM_REC_CNT
         from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT
-        where run_date = to_date('2025-06-30','YYYY-MM-DD')
+       -- where run_date = to_date('2025-06-30','YYYY-MM-DD')
         order by MCO, MEASURE
         
         )
@@ -308,6 +313,7 @@ WITH priority_sums AS (
 --select * from priority_sums;
 
 select
+    a.RUN_DATE,
     a.MCO,
     TMSIS_REC_CNT,
     TMSIS_CRITICAL, 
@@ -317,39 +323,40 @@ select
     OVERALL_STATUS 
 from
 (
-select MCO, SUM(PRI_TMSIS_REC_CNT) TMSIS_REC_CNT
+select RUN_DATE, MCO, SUM(PRI_TMSIS_REC_CNT) TMSIS_REC_CNT
 from priority_sums
-group by MCO
+group by RUN_DATE, MCO
 ) a
 join
 (
 select
+RUN_DATE,
 MCO, 
 "'Critical'"   AS TMSIS_CRITICAL, 
 "'High'"       AS TMSIS_HIGH, 
 "'Medium'"     AS TMSIS_MEDIUM, 
 "'Not Set'"    AS NOT_SET
 from ( 
-    select MCO, PRIORITY, PCT_PF_MEASURE
+    select RUN_DATE, MCO, PRIORITY, PCT_PF_MEASURE
     from priority_sums
     )
   PIVOT (
     MAX(PCT_PF_MEASURE) FOR PRIORITY IN ('Critical', 'High', 'Medium', 'Not Set')
   )
 )  b
-on a.MCO = b.MCO
+on a.RUN_DATE = b.RUN_DATE and a.MCO = b.MCO
 join 
 (
 -- overall_pct
-select MCO, CASE WHEN MEAS = 0 THEN 0 ELSE PF/MEAS END OVERALL_STATUS
+select RUN_DATE, MCO, CASE WHEN MEAS = 0 THEN 0 ELSE PF/MEAS END OVERALL_STATUS
 from ( 
-    select MCO, SUM(PF_SUM) PF, SUM(MEAS_COUNT) MEAS
+    select RUN_DATE, MCO, SUM(PF_SUM) PF, SUM(MEAS_COUNT) MEAS
     from priority_sums
-    group by MCO
+    group by RUN_DATE, MCO
      )
 ) c
-on a.MCO = c.MCO
+on a.RUN_DATE = c.RUN_DATE and a.MCO = c.MCO
 
-order by a.MCO
+order by a.RUN_DATE, a.MCO
 
 ;
