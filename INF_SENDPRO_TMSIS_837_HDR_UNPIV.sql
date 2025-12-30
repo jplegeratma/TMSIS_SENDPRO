@@ -5,16 +5,16 @@ DROP VIEW INF_SENDPRO_TMSIS_837_HDR_UNPIV;
     
 CREATE VIEW INF_SENDPRO_TMSIS_837_HDR_UNPIV AS
 
-SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, A.CDE_ENTITY_MODEL, A.CDE_ENC_MCO, A.CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, A.MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT,
+SELECT DISTINCT RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, A.CDE_ENTITY_MODEL, A.CDE_ENC_MCO, A.CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, A.MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT, WH_MON,
 --s.FILE_NAME, s.PROCESS_START_TM, 
 L.BENCHMARK_THRESHOLD, L.PRIORITY, TMSIS_CLAIM_TYPE, TMSIS_CLAIM_TYPE_DSC
 FROM (
 
-SELECT DISTINCT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE, REC_CNT
+SELECT DISTINCT RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE, WH_MON, REC_CNT
 FROM (
-    SELECT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE, COUNT(TYPE) AS REC_CNT
+    SELECT RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, WH_MON, MEASURE, TYPE, COUNT(TYPE) AS REC_CNT
     FROM (
-        SELECT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE
+        SELECT RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, DOS_MON, WH_MON, MEASURE, TYPE
         FROM (
             SELECT
                 RUN_DATE,
@@ -27,6 +27,8 @@ FROM (
                 CDE_CLM_STATUS,
                 IND_CROSSOVER,
                 MD_BATCH_SEQ,
+                TO_CHAR(DOS_FROM_DT,'YYMM') AS DOS_MON,
+                TO_CHAR(WH_FROM_DT,'YYMM') AS WH_MON,
                 PATIENTSTATUSCODE1X AS Patient_Status_Code,
                 MEMBERID1X AS MSIS_Identification_Number,
                 ADJUDICATIONDATEHDRX AS Adjudication_Date_Header,
@@ -105,9 +107,9 @@ FROM (
             )
         ) AS INF_B_SENDPRO_TMSIS_837_UNPIV
     )
-    GROUP BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE
+    GROUP BY RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE, WH_MON
 )
-ORDER BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE
+ORDER BY RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MD_BATCH_SEQ, MEASURE, TYPE, WH_MON
 
 ) AS A
 --LEFT JOIN MHDWQA.SENDPRO.SPRO_B_ENC_STATISTIC S ON A.MD_BATCH_SEQ = s.MD_BATCH_SEQ_SPRO
@@ -122,6 +124,7 @@ AS
 
 SELECT DISTINCT 
                a.RUN_DATE,
+               a.DOS_MON,
                a.CLAIM_LEG_TYPE, 
                a.CDE_ENTITY_MODEL, 
                a.CDE_ENC_MCO, 
@@ -131,6 +134,7 @@ SELECT DISTINCT
                a.CDE_CLM_STATUS,
                a.IND_CROSSOVER,
                a.MD_BATCH_SEQ, 
+               a.WH_MON,
                a.MEASURE, 
                a.TYPE, 
                a.NUM_ICN, 
@@ -143,6 +147,7 @@ FROM (
 -- limit rank to 10 lines
 SELECT DISTINCT 
                RUN_DATE,
+               DOS_MON,
                CLAIM_LEG_TYPE, 
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
@@ -152,6 +157,7 @@ SELECT DISTINCT
                CDE_CLM_STATUS, 
                IND_CROSSOVER,
                MD_BATCH_SEQ, 
+               WH_MON,
                MEASURE, 
                TYPE, 
                NUM_ICN, 
@@ -161,6 +167,7 @@ FROM (
 -- rank
   SELECT 
                RUN_DATE, 
+               DOS_MON,
                CLAIM_LEG_TYPE,
                CDE_ENTITY_MODEL, 
                CDE_ENC_MCO, 
@@ -170,11 +177,13 @@ FROM (
                CDE_CLM_STATUS, 
                IND_CROSSOVER,
                MD_BATCH_SEQ, 
+               WH_MON,
                MEASURE, 
                TYPE, 
                NUM_ICN, 
                                           RANK ()
                                             OVER (PARTITION BY RUN_DATE,
+                                                               DOS_MON,
                                                                CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
@@ -184,9 +193,11 @@ FROM (
                                                                CDE_CLM_STATUS,
                                                                IND_CROSSOVER,
                                                                MD_BATCH_SEQ,
+                                                               WH_MON,
                                                                MEASURE
                                                   ORDER BY
                                                                RUN_DATE,
+                                                               DOS_MON,
                                                                CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
@@ -196,6 +207,7 @@ FROM (
                                                                CDE_CLM_STATUS,
                                                                IND_CROSSOVER,
                                                                MD_BATCH_SEQ,
+                                                               WH_MON,
                                                                MEASURE,
                                                                TYPE,
                                                                NUM_ICN)    AS rnk
@@ -214,6 +226,8 @@ FROM (
                CDE_CLM_STATUS,
                IND_CROSSOVER, 
                MD_BATCH_SEQ, 
+               DOS_MON,
+               WH_MON,
                MEASURE, 
                TYPE, 
                NUM_ICN
@@ -230,6 +244,8 @@ FROM (
                 CDE_CLM_STATUS,
                 IND_CROSSOVER,
                 MD_BATCH_SEQ,
+                TO_CHAR(DOS_FROM_DT,'YYMM') AS DOS_MON,
+                TO_CHAR(WH_FROM_DT,'YYMM') AS WH_MON,
                 PATIENTSTATUSCODE1X AS Patient_Status_Code,
                 MEMBERID1X AS MSIS_Identification_Number,
                 ADJUDICATIONDATEHDRX AS Adjudication_Date_Header,
@@ -308,7 +324,7 @@ FROM (
                 Allowed_Amount
             )
 ) AS UNPIV_HDR
-ORDER BY RUN_DATE, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MEASURE, TYPE
+ORDER BY RUN_DATE, DOS_MON, CLAIM_LEG_TYPE, CDE_ENTITY_MODEL, CDE_ENC_MCO, CDE_ENC_ACO, CLAIM_TYPE, CDE_CLM_DISPOSITION, CDE_CLM_STATUS, IND_CROSSOVER, MEASURE, TYPE
 
 )
 -- add rank
@@ -318,6 +334,7 @@ WHERE rnk <= 10
 
 ORDER BY 
                                                                RUN_DATE,
+                                                               DOS_MON,
                                                                CLAIM_LEG_TYPE,
                                                                CDE_ENTITY_MODEL, 
                                                                CDE_ENC_MCO, 
