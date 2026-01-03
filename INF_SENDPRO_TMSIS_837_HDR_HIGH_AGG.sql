@@ -183,7 +183,7 @@ GROUP BY RUN_DATE, DOS_MON, MCO
 order by MCO
 ---
 )
-GROUP BY MCO, DOS_MON, Priority, Measures
+GROUP BY MCO, Priority, Measures
 order by MCO
 
 ) -- True Up Pass
@@ -233,8 +233,8 @@ FROM (
     )
     group by RUN_DATE, DOS_MON, MCO, PRIORITY
 )
-GROUP BY MCO, DOS_MON, PRIORITY, MEAS_COUNT
-ORDER BY MCO, DOS_MON, PRIORITY
+GROUP BY MCO, PRIORITY, MEAS_COUNT
+ORDER BY MCO, PRIORITY
 
 ) -- Prioritys
 
