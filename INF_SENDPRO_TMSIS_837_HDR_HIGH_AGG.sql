@@ -242,6 +242,130 @@ ORDER BY MCO, PRIORITY
 ORDER BY MCO, SO
 ;
 
+DROP VIEW INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_T1;
+
+create view MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_T1
+AS
+        select DOS_MON, MCO, PRIORITY, PF_SUM, MEAS_COUNT, CASE WHEN MEAS_COUNT = 0 THEN 0 ELSE PF_SUM / MEAS_COUNT END AS PF_SUM_PCT
+        from (
+            select DOS_MON, MCO, PRIORITY, count(MEASURE) MEAS_COUNT, SUM(PASS_FAIL) PF_SUM
+            from (
+                select RUN_DATE, DOS_MON, MCO, PRIORITY, MEASURE,
+                CASE WHEN PCT_VALID >= CRITERIA THEN 1 ELSE 0 END PASS_FAIL
+                from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT
+            )
+            group by DOS_MON, MCO, PRIORITY            
+        )
+                    order by DOS_MON, MCO, PRIORITY;
+
+
+DROP VIEW INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_T2;
+
+create view MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_T2
+AS
+-- True Up Pass
+select * from (
+
+select * from (
+select
+    RUN_DATE, 
+    DOS_MON, 
+    MCO,
+    1 AS SO,
+    'True Up Pass %' AS Priority,
+    SUM_VALID_REC_CNT AS PF_SUM,  
+    SUM_TMSIS_REC_CNT AS Measures,
+    PCT_VALID AS PF_SUM_PCT
+FROM (
+select RUN_DATE, DOS_MON, MCO, SUM_VALID_REC_CNT, SUM_TMSIS_REC_CNT, CASE WHEN SUM_TMSIS_REC_CNT = 0 THEN NULL ELSE SUM_VALID_REC_CNT/SUM_TMSIS_REC_CNT END AS PCT_VALID,
+from (
+select RUN_DATE, DOS_MON, MCO, SUM(VALID_REC_CNT) AS SUM_VALID_REC_CNT, 
+SUM(TMSIS_REC_CNT) AS SUM_TMSIS_REC_CNT  
+FROM (
+select RUN_DATE, DOS_MON, CDE_ENC_MCO AS MCO, PRIORITY, MEASURE, BENCHMARK_THRESHOLD AS Criteria, 
+CASE WHEN TYPE IN ('VALID') THEN REC_CNT ELSE 0 END AS VALID_REC_CNT,
+CASE WHEN TYPE IN ('VALID','NULL','INVALID') THEN REC_CNT ELSE 0 END AS TMSIS_REC_CNT
+from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG
+)
+GROUP BY RUN_DATE, DOS_MON, MCO
+)
+order by MCO
+---
+) 
+)-- True Up Pass
+UNION
+select * from (
+-- Prioritys
+    select RUN_DATE, DOS_MON, MCO,       
+    CASE 
+        WHEN PRIORITY = 'Critical' THEN 2
+        WHEN PRIORITY = 'High'     THEN 3
+        WHEN PRIORITY = 'Medium'   THEN 4
+        ELSE 5
+        END SO,
+    CASE 
+        WHEN PRIORITY = 'Critical' THEN 'TMSIS Critical'
+        WHEN PRIORITY = 'High'     THEN 'TMSIS High'
+        WHEN PRIORITY = 'Medium'   THEN 'TMSIS Other(Med)'
+        ELSE 'NOT SET'
+        END Priority,
+        PF_SUM, MEAS_COUNT MEASURES, CASE WHEN MEAS_COUNT = 0 THEN 0 ELSE PF_SUM / MEAS_COUNT END AS PF_SUM_PCT
+        from (
+            select RUN_DATE, DOS_MON, MCO, PRIORITY, count(MEASURE) MEAS_COUNT, SUM(PASS_FAIL) PF_SUM
+            from (
+                select RUN_DATE, DOS_MON, MCO, PRIORITY, MEASURE,
+                CASE WHEN PCT_VALID >= CRITERIA THEN 1 ELSE 0 END PASS_FAIL
+                from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT
+            )
+            group by RUN_DATE, DOS_MON, MCO, PRIORITY            
+        )
+                    order by RUN_DATE, DOS_MON, MCO, PRIORITY
+) -- Prioritys
+
+)
+ORDER BY RUN_DATE, MCO, DOS_MON, SO;
+
+
+DROP VIEW INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_PIV;
+
+create view MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_SUMMARY_VIEW_PIV
+AS
+
+WITH PF AS (
+        select DOS_MON, MCO, PRIORITY, PF_SUM, MEAS_COUNT, CASE WHEN MEAS_COUNT = 0 THEN 0 ELSE PF_SUM / MEAS_COUNT END AS PF_SUM_PCT
+        from (
+            select DOS_MON, MCO, PRIORITY, count(MEASURE) MEAS_COUNT, SUM(PASS_FAIL) PF_SUM
+            from (
+                select RUN_DATE, DOS_MON, MCO, PRIORITY, MEASURE,
+                CASE WHEN PCT_VALID >= CRITERIA THEN 1 ELSE 0 END PASS_FAIL
+                from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT
+            )
+            group by DOS_MON, MCO, PRIORITY
+        )
+)
+
+SELECT *
+    FROM (
+        select DOS_MON, MCO, PRIORITY, MEAS_COUNT, PF_SUM from PF    
+    )
+    PIVOT (
+        MAX(PF_SUM)
+        FOR DOS_MON IN (SELECT DISTINCT DOS_MON FROM MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT ORDER BY DOS_MON)
+    ) p1
+FULL OUTER JOIN (
+
+  SELECT *
+    FROM (
+        select DOS_MON || '_PCT' AS DOS_MON_PCT, MCO AS P2_MCO, PRIORITY AS P2_PRIORITY, PF_SUM_PCT from PF    
+    )
+    PIVOT (
+        MAX(PF_SUM_PCT)
+        FOR DOS_MON_PCT IN (SELECT DISTINCT DOS_MON || '_PCT' AS DOS_MON_PCT FROM MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT ORDER BY DOS_MON_PCT)
+    )
+) p2 
+ON p1.MCO = p2.P2_MCO AND p1.PRIORITY = p2.P2_PRIORITY
+ORDER BY p1.MCO, p1.PRIORITY;
+
 DROP VIEW INF_SENDPRO_TMSIS_837_AGG_DASHBOARD;
 
 create view MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_AGG_DASHBOARD(
@@ -309,25 +433,30 @@ WITH priority_sums AS (
     order by RUN_DATE, DOS_MON, MCO, PRIORITY
     )
 
-) -- with pirority sums
-
---select * from priority_sums;
+), -- with pirority sums
+record_counts AS (
+        select RUN_DATE, DOS_MON, MCO,
+        MAX(SUM_TMSIS_REC_CNT) TMSIS_REC_CNT, MAX(SUM_REC_CNT) ALL_REC_CNT
+        from MHTEAM.DWDQ.INF_SENDPRO_TMSIS_837_HDR_HIGH_AGG_PCT
+        group by RUN_DATE, DOS_MON, MCO
+        order by MCO, DOS_MON
+) -- with record_counts
 
 select
     a.RUN_DATE,
     a.DOS_MON,
     a.MCO,
-    TMSIS_REC_CNT,
-    TMSIS_CRITICAL, 
-    TMSIS_HIGH, 
-    TMSIS_MEDIUM, 
-    NOT_SET,
-    OVERALL_STATUS 
+    a.ALL_REC_CNT,
+    a.TMSIS_REC_CNT,
+    b.TMSIS_CRITICAL, 
+    b.TMSIS_HIGH, 
+    b.TMSIS_MEDIUM, 
+    b.NOT_SET,
+    c.OVERALL_STATUS 
 from
 (
-select RUN_DATE, DOS_MON, MCO, SUM(PRI_TMSIS_REC_CNT) TMSIS_REC_CNT
-from priority_sums
-group by RUN_DATE, DOS_MON, MCO
+select RUN_DATE, DOS_MON, MCO, TMSIS_REC_CNT, ALL_REC_CNT
+from record_counts
 ) a
 join
 (
